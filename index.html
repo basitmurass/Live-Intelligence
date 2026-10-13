@@ -1,0 +1,2333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Event Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.379.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+  :root{
+    --ink:#1A2420;
+    --ink-soft:#4B564F;
+    --paper:#F6F4EE;
+    --card:#FFFFFF;
+    --line:#DCD7C8;
+    --brand:#1F6F5C;
+    --brand-dark:#154D40;
+    --brand-tint:#E7F0EA;
+    --amber:#DA9B3C;
+    --amber-tint:#FBEED9;
+    --rose:#B4485F;
+    --rose-tint:#F7E7EA;
+    --danger:#C33C3C;
+    --danger-tint:#F8E3E1;
+    --live:#D5432E;
+    --shadow: 0 1px 2px rgba(26,36,32,.06), 0 8px 24px -12px rgba(26,36,32,.18);
+    --radius-s: 8px;
+    --radius-m: 14px;
+    --radius-l: 22px;
+    --font-display:'Fraunces', Georgia, serif;
+    --font-body:'Inter', -apple-system, sans-serif;
+  }
+  .dark-mode{
+    --ink:#EDEAE1;
+    --ink-soft:#AFB6AC;
+    --paper:#0F1713;
+    --card:#17211C;
+    --line:#2A362F;
+    --brand:#3C9C82;
+    --brand-dark:#2E7C68;
+    --brand-tint:#173229;
+    --amber:#E5B15E;
+    --amber-tint:#2E2515;
+    --rose:#D97F8F;
+    --rose-tint:#2E1B1F;
+    --danger:#E17272;
+    --danger-tint:#301919;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 28px -14px rgba(0,0,0,.6);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-font-smoothing:antialiased;}
+  body{
+    font-family:var(--font-body);
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    transition:background .25s ease, color .25s ease;
+  }
+  a{color:inherit;}
+  h1,h2,h3{font-family:var(--font-display); font-weight:600; letter-spacing:-0.01em;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit;}
+
+  /* ---------- App shell ---------- */
+  .app-shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:250px; background:var(--card); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; padding:1.5rem 1.1rem; position:sticky; top:0; height:100vh;
+  }
+  .brand-mark{display:flex; align-items:center; gap:.6rem; margin-bottom:2rem; padding:0 .3rem;}
+  .brand-mark .glyph{
+    width:36px; height:36px; border-radius:10px; background:var(--brand); color:#fff;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .brand-mark .glyph svg{width:19px; height:19px;}
+  .brand-mark .word{font-family:var(--font-display); font-weight:600; font-size:1.15rem; line-height:1.1;}
+  .brand-mark small{display:block; font-size:.68rem; color:var(--brand); font-weight:600; margin-top:2px;}
+
+  nav.side-nav{display:flex; flex-direction:column; gap:.2rem; flex:1;}
+  .nav-item{
+    display:flex; align-items:center; gap:.7rem; padding:.65rem .8rem; border:none; background:transparent;
+    color:var(--ink-soft); border-radius:var(--radius-s); font-weight:500; font-size:.92rem; text-align:left; width:100%;
+    transition:background .15s ease, color .15s ease;
+  }
+  .nav-item svg{width:18px; height:18px; flex-shrink:0;}
+  .nav-item:hover{background:var(--brand-tint); color:var(--brand-dark);}
+  .nav-item.active{background:var(--brand); color:#fff;}
+  .sidebar-foot{border-top:1px solid var(--line); padding-top:1rem; display:flex; align-items:center; gap:.5rem;}
+  .icon-btn{
+    width:36px; height:36px; border-radius:var(--radius-s); border:1px solid var(--line); background:var(--card);
+    color:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .icon-btn svg{width:16px; height:16px;}
+  .icon-btn:hover{border-color:var(--brand);}
+  #user-blurb{flex:1; min-width:0; font-size:.8rem; line-height:1.3;}
+  #user-blurb .u-name{font-weight:600; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  .main{flex:1; display:flex; flex-direction:column; min-width:0;}
+  .topbar{
+    padding:1.1rem 2rem; background:var(--card); border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:5;
+  }
+  .topbar h1{font-size:1.3rem;}
+  .live-chip{display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:.8rem; color:var(--live); letter-spacing:.03em;}
+  .live-dot{width:8px; height:8px; border-radius:50%; background:var(--live); animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(213,67,46,.55);}70%{box-shadow:0 0 0 9px rgba(213,67,46,0);}100%{box-shadow:0 0 0 0 rgba(213,67,46,0);}}
+  #view{padding:2rem; flex:1;}
+
+  @media (max-width: 980px){
+    .sidebar{width:74px; padding:1.2rem .5rem;}
+    .brand-mark .word, .brand-mark small, .nav-item span, #user-blurb{display:none;}
+    .nav-item{justify-content:center;}
+    .brand-mark{justify-content:center;}
+    #view{padding:1.2rem;}
+    .topbar{padding:1rem 1.2rem;}
+  }
+
+  /* ---------- Building blocks ---------- */
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius-m); box-shadow:var(--shadow); padding:1.6rem; transition:box-shadow .2s ease, border-color .2s ease;}
+  .grid{display:grid; gap:1.4rem;}
+  .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-2{grid-template-columns:1fr 1fr;}
+  @media (max-width:900px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
+
+  .tile{background:var(--card); border:1px solid var(--line); border-radius:var(--radius-m); padding:1.3rem 1.4rem; position:relative; overflow:hidden;}
+  .tile-hover{background:linear-gradient(180deg, var(--tint, var(--card)) 0%, var(--card) 65%); transition:transform .15s ease, box-shadow .15s ease;}
+  .tile-hover:hover{transform:translateY(-3px); box-shadow:var(--shadow);}
+  .tile::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--bar,var(--brand));}
+  .tile .t-label{font-size:.76rem; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .tile .t-value{font-family:var(--font-display); font-size:2.1rem; font-weight:600; margin-top:.3rem;}
+
+  label{display:block; font-size:.85rem; font-weight:600; margin-bottom:.4rem; color:var(--ink-soft);}
+  .field{margin-bottom:1.3rem;}
+  input[type=text],input[type=tel],input[type=email],input[type=password],input[type=number],input[type=date],input[type=datetime-local],textarea,select{
+    width:100%; padding:.72rem .9rem; border:1px solid var(--line); border-radius:var(--radius-s);
+    background:var(--paper); color:var(--ink); font-size:.95rem; outline:none; transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--brand); box-shadow:0 0 0 3px var(--brand-tint);}
+  textarea{resize:vertical;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+    padding:.75rem 1.3rem; border-radius:var(--radius-s); border:none; font-weight:600; font-size:.92rem;
+    transition:filter .15s ease, transform .05s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn svg{width:16px; height:16px;}
+  .btn-brand{background:var(--brand); color:#fff;}
+  .btn-brand:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--brand); color:var(--brand-dark);}
+  .btn-danger{background:var(--danger-tint); color:var(--danger);}
+  .btn-danger:hover{filter:brightness(.97);}
+  .btn-amber{background:var(--amber); color:#3A2A0B;}
+  .btn:disabled{opacity:.55; cursor:default;}
+  .btn-block{width:100%;}
+  .btn-sm{padding:.45rem .8rem; font-size:.8rem;}
+
+  table{width:100%; border-collapse:collapse;}
+  th{text-align:left; padding:.85rem 1rem; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--brand-dark); background:var(--brand-tint); border-bottom:1.5px solid var(--line);}
+  td{padding:.85rem 1rem; border-bottom:1px solid var(--line); font-size:.9rem; vertical-align:middle;}
+  tr.row:nth-child(even) td{background:var(--paper);}
+  tr.row:hover td{background:var(--brand-tint) !important;}
+  .avatar-thumb{width:38px; height:38px; border-radius:8px; object-fit:cover; border:1px solid var(--line);}
+  .avatar-fallback{width:38px; height:38px; border-radius:8px; background:var(--brand-tint); color:var(--brand-dark); display:flex; align-items:center; justify-content:center;}
+  .table-wrap{overflow-x:auto;}
+
+  .badge{display:inline-flex; align-items:center; padding:.2rem .55rem; border-radius:99px; font-size:.72rem; font-weight:700;}
+  .badge-amber{background:var(--amber-tint); color:#8C5F16;}
+  .badge-brand{background:var(--brand-tint); color:var(--brand-dark);}
+
+  .empty-state{padding:3.5rem 1rem; text-align:center; color:var(--ink-soft);}
+  .empty-state svg{width:34px; height:34px; margin-bottom:.8rem; opacity:.5;}
+
+  /* ---------- Landing ---------- */
+  .landing{min-height:100vh; background:var(--ink); color:#F4F1E9; overflow-x:hidden;}
+  .land-nav{display:flex; align-items:center; justify-content:space-between; padding:1.5rem clamp(1.2rem,5vw,4rem);}
+  .land-nav .brand-mark .word{color:#F4F1E9;}
+  .land-nav .glyph{background:var(--amber); color:#3A2A0B;}
+  .land-hero{padding:2rem clamp(1.2rem,5vw,4rem) 5rem; display:grid; grid-template-columns:1.1fr .9fr; gap:3rem; align-items:center;}
+  @media (max-width:920px){.land-hero{grid-template-columns:1fr;}}
+  .land-hero h1{font-size:clamp(2.4rem,5vw,3.6rem); line-height:1.06; color:#F7F4EC;}
+  .land-hero .lede{color:#C9C6B9; font-size:1.05rem; margin:1.4rem 0 2rem; max-width:46ch; line-height:1.6;}
+  .land-cta-row{display:flex; gap:1rem; flex-wrap:wrap;}
+  .land-btn-primary{background:var(--amber); color:#3A2A0B; padding:.95rem 1.8rem; border-radius:99px; border:none; font-weight:700;}
+  .land-btn-ghost{background:transparent; color:#F4F1E9; padding:.95rem 1.8rem; border-radius:99px; border:1px solid rgba(244,241,233,.3); font-weight:600;}
+  .trial-note{margin-top:1.6rem; display:flex; gap:.5rem; align-items:center; font-size:.85rem; color:#A9D9C7;}
+  .trial-note svg{width:16px; height:16px;}
+
+  .live-mock{background:#131F1A; border:1px solid #24352C; border-radius:var(--radius-l); padding:1.6rem; box-shadow:0 30px 60px -25px rgba(0,0,0,.6);}
+  .live-mock .lm-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem; color:#9AA79E; font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em;}
+  .lm-count{font-family:var(--font-display); font-size:3.6rem; font-weight:600; color:#F4F1E9; line-height:1;}
+  .lm-sub{color:#8FA69B; font-size:.85rem; margin-top:.4rem;}
+  .lm-bars{display:flex; gap:.5rem; margin-top:1.6rem; height:56px; align-items:flex-end;}
+  .lm-bars span{flex:1; background:linear-gradient(180deg,var(--amber),#a3752a); border-radius:4px 4px 0 0; opacity:.85;}
+
+  .land-strip{border-top:1px solid #263127; border-bottom:1px solid #263127; padding:2.2rem clamp(1.2rem,5vw,4rem); display:grid; grid-template-columns:repeat(3,1fr); gap:2rem;}
+  @media (max-width:820px){.land-strip{grid-template-columns:1fr;}}
+  .strip-item h3{font-size:1.05rem; color:#F4F1E9; margin-bottom:.4rem;}
+  .strip-item p{color:#9CA79D; font-size:.88rem; line-height:1.55;}
+  .strip-item .num{font-family:var(--font-display); color:var(--amber); font-size:1.1rem; margin-bottom:.3rem;}
+
+  .land-foot{text-align:center; padding:2.2rem; color:#71796F; font-size:.8rem;}
+
+  /* ---------- Auth ---------- */
+  .auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--ink); padding:2rem;}
+  .auth-card{width:100%; max-width:400px; background:#182119; border:1px solid #283329; border-radius:var(--radius-l); padding:2.4rem; color:#F0EDE4;}
+  .auth-card h2{font-size:1.7rem; margin-bottom:.4rem;}
+  .auth-card .sub{color:#9CA79D; font-size:.9rem; margin-bottom:1.8rem;}
+  .auth-card label{color:#C9C6B9;}
+  .auth-card input{background:#101911; border-color:#2B362D; color:#F0EDE4;}
+  .auth-card input:focus{border-color:var(--amber); box-shadow:0 0 0 3px rgba(218,155,60,.15);}
+  .auth-switch{text-align:center; margin-top:1.6rem; color:#9CA79D; font-size:.88rem;}
+  .auth-switch a{color:var(--amber); font-weight:600; text-decoration:none;}
+  .auth-divider{display:flex; align-items:center; gap:1rem; margin:1.5rem 0; color:#7B857A; font-size:.78rem;}
+  .auth-divider .ln{flex:1; height:1px; background:#2B362D;}
+  .google-btn{width:100%; background:#F0EDE4; color:#1A2420; border:none; border-radius:var(--radius-s); padding:.78rem; font-weight:700; display:flex; align-items:center; justify-content:center; gap:.7rem;}
+
+  /* ---------- Camera overlay ---------- */
+  .cam-overlay{position:fixed; inset:0; background:rgba(10,14,11,.94); z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; padding:1.5rem;}
+  .cam-frame{position:relative; width:100%; max-width:560px;}
+  .cam-frame video{width:100%; border-radius:var(--radius-m);}
+  .scan-line{position:absolute; left:4%; width:92%; height:2px; background:var(--amber); box-shadow:0 0 12px var(--amber); animation:scan 2s linear infinite;}
+  @keyframes scan{0%{top:22%;}100%{top:72%;}}
+  .cam-controls{margin-top:1.4rem; text-align:center; color:#EDEAE1;}
+  .cam-controls p{margin-bottom:.9rem; color:#B8C2B9; font-size:.9rem;}
+  .cam-btn-row{display:flex; gap:.8rem; justify-content:center;}
+  #ocr-status{margin-top:.9rem; font-weight:600; font-size:.88rem; min-height:1.2em;}
+
+  /* misc */
+  .subhead{color:var(--ink-soft); font-size:.92rem; margin-top:.3rem;}
+  .section-head{display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.5rem;}
+  .filter-bar{display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:1rem; background:var(--paper); padding:1rem; border-radius:var(--radius-s); margin-bottom:1.5rem; align-items:end;}
+  @media (max-width:800px){.filter-bar{grid-template-columns:1fr 1fr;}}
+  .storage-note{display:flex; gap:.7rem; background:var(--amber-tint); border:1px solid rgba(218,155,60,.35); color:#8C5F16; padding:.9rem 1.1rem; border-radius:var(--radius-s); font-size:.83rem; margin-bottom:1.4rem; align-items:flex-start;}
+  .dark-mode .storage-note{color:#E5B15E;}
+  .storage-note svg{width:18px; height:18px; flex-shrink:0; margin-top:1px;}
+  .plan-badge{position:absolute; top:-11px; left:50%; transform:translateX(-50%); background:var(--brand); color:#fff; padding:.2rem .8rem; border-radius:99px; font-size:.72rem; font-weight:700;}
+  .plan-card{position:relative; background:var(--card); border:2px solid var(--line); border-radius:var(--radius-m); padding:1.8rem; display:flex; flex-direction:column;}
+  .plan-card.current{border-color:var(--brand);}
+  .plan-card .price{font-family:var(--font-display); font-size:2.1rem; font-weight:600; margin:.6rem 0 1.3rem;}
+  .plan-card .price small{font-size:.9rem; color:var(--ink-soft); font-weight:400; font-family:var(--font-body);}
+  .plan-card ul{list-style:none; margin-bottom:1.6rem; flex:1;}
+  .plan-card li{display:flex; align-items:center; gap:.5rem; margin-bottom:.65rem; font-size:.88rem;}
+  .plan-card li svg{width:15px; height:15px; flex-shrink:0;}
+  .pay-method{padding:1rem; border-radius:var(--radius-s); border:2px solid var(--line); background:var(--paper); display:flex; flex-direction:column; align-items:center; gap:.5rem; font-size:.8rem; font-weight:600;}
+  .pay-method.active{border-color:var(--brand); background:var(--brand-tint);}
+  @media (max-width:640px){
+    .tile .t-value{font-size:1.55rem;}
+    #view{padding:1rem;}
+    .topbar h1{font-size:1.05rem;}
+    .topbar{padding:.9rem 1rem;}
+    .card{padding:1.15rem;}
+    .section-head h2{font-size:1.05rem;}
+    #sync-badge{display:none;}
+  }
+</style>
+</head>
+<body class="light-mode">
+
+<!-- ============ AUTH / LANDING ROOT ============ -->
+<div id="gate-root"></div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app-shell" class="app-shell" style="display:none;">
+  <aside class="sidebar">
+    <div class="brand-mark">
+      <div class="glyph"><i data-lucide="tent-tree"></i></div>
+      <div>
+        <div class="word">Live Intelligence</div>
+        <small id="sb-business"></small>
+      </div>
+    </div>
+    <nav class="side-nav">
+      <button class="nav-item" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+      <button class="nav-item" data-view="entry"><i data-lucide="user-plus"></i><span>Attendee Entry</span></button>
+      <button class="nav-item" data-view="logs"><i data-lucide="list"></i><span>Entry Logs</span></button>
+      <button class="nav-item" data-view="trash"><i data-lucide="trash-2"></i><span>Trash</span></button>
+      <button class="nav-item" data-view="access"><i data-lucide="key-round"></i><span>Access Control</span></button>
+      <button class="nav-item" data-view="settings"><i data-lucide="settings-2"></i><span>Sync Settings</span></button>
+      <button class="nav-item" data-view="pricing"><i data-lucide="credit-card"></i><span>Pricing Plans</span></button>
+      <button class="nav-item" data-view="profile"><i data-lucide="settings"></i><span>Profile Settings</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <button id="theme-toggle" class="icon-btn"><i data-lucide="moon"></i></button>
+      <div id="user-blurb"></div>
+      <button id="logout-btn" class="icon-btn" title="Logout" style="color:var(--danger);"><i data-lucide="log-out"></i></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="view-title">Dashboard</h1>
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <div id="sync-badge" style="font-size:.78rem; font-weight:600; color:var(--ink-soft);">○ Sheet not connected</div>
+        <div class="live-chip"><span class="live-dot"></span> LIVE</div>
+      </div>
+    </header>
+    <div id="view"></div>
+  </main>
+</div>
+
+<!-- ============ CAMERA OVERLAY ============ -->
+<div id="cam-overlay" class="cam-overlay">
+  <div class="cam-frame">
+    <video id="video-feed" autoplay playsinline></video>
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+    <div id="scan-line" class="scan-line" style="display:none;"></div>
+  </div>
+  <div class="cam-controls">
+    <p id="cam-instruction">Align CNIC within the frame</p>
+    <select id="cam-device-select" style="margin-bottom:.8rem; display:none; max-width:320px;"></select>
+    <div id="ocr-status"></div>
+    <div class="cam-btn-row">
+      <button id="capture-btn" class="btn btn-brand"><i data-lucide="camera"></i> Capture</button>
+      <button id="close-camera" class="btn btn-danger">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BULK PHOTO IMPORT OVERLAY ============ -->
+<div id="bulk-overlay" style="display:none; position:fixed; inset:0; background:rgba(10,14,11,.94); z-index:210; align-items:flex-start; justify-content:center; overflow-y:auto; padding:2rem 1rem;">
+  <div class="card" style="width:100%; max-width:820px; background:var(--card); margin-bottom:2rem;">
+    <div class="section-head">
+      <h2 style="font-size:1.15rem;">Import multiple entries from a photo</h2>
+      <button id="bulk-close" class="icon-btn" style="color:var(--danger);"><i data-lucide="x"></i></button>
+    </div>
+
+    <div class="storage-note">
+      <i data-lucide="info"></i>
+      <div>This reads text off one photo of your register and turns each line into a draft entry. Handwriting is read less reliably than print — <strong>check every row below before importing</strong>, since wrong headcounts or CNICs won't be caught automatically.</div>
+    </div>
+
+    <div id="bulk-step-upload">
+      <div class="field">
+        <label>Photo of the register page</label>
+        <input type="file" id="bulk-file-input" accept="image/*">
+      </div>
+      <div id="bulk-preview-wrap" style="display:none; margin-bottom:1.4rem;">
+        <img id="bulk-preview-img" style="max-width:100%; max-height:280px; border-radius:var(--radius-s); border:1px solid var(--line);">
+      </div>
+      <button id="bulk-extract-btn" class="btn btn-brand" disabled>Extract entries from photo</button>
+      <div id="bulk-ocr-status" style="margin-top:1rem; font-weight:600; font-size:.9rem;"></div>
+    </div>
+
+    <div id="bulk-step-review" style="display:none;">
+      <div class="table-wrap">
+        <table style="min-width:820px;">
+          <thead><tr><th style="width:34px;"></th><th>Name</th><th>CNIC</th><th>Phone</th><th>City</th><th>M</th><th>W</th><th>C</th><th></th></tr></thead>
+          <tbody id="bulk-tbody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex; gap:.8rem; margin-top:1.4rem; flex-wrap:wrap;">
+        <button id="bulk-add-row" class="btn btn-ghost btn-sm"><i data-lucide="plus"></i> Add blank row</button>
+        <button id="bulk-import-btn" class="btn btn-brand" style="margin-left:auto;">Import checked rows</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   UTILS
+============================================================ */
+const Utils = {
+  validateCNIC: (c) => /^[0-9]{5}-[0-9]{7}-[0-9]{1}$/.test(c),
+  genderFromCNIC: (c) => Utils.validateCNIC(c) ? (parseInt(c.slice(-1)) % 2 === 0 ? 'Female' : 'Male') : null,
+  cities: ["Karachi","Lahore","Faisalabad","Rawalpindi","Gujranwala","Peshawar","Multan","Hyderabad","Islamabad","Quetta","Bahawalpur","Sargodha","Sialkot","Sukkur","Larkana","Sheikhupura","Rahim Yar Khan","Jhang","Dera Ghazi Khan","Muzaffargarh"],
+  countries: ["Pakistan","Afghanistan","India","Bangladesh","United Kingdom","USA","Canada","Saudi Arabia","UAE","Others"],
+  fmtDate: (iso) => { try{ return new Date(iso).toLocaleString(); }catch(e){ return '—'; } },
+  escapeHtml: (s) => (s===undefined||s===null) ? '' : String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),
+  icons: () => { try{ lucide.createIcons(); }catch(e){} },
+  countryCodes: { "Pakistan":"PK","Afghanistan":"AF","India":"IN","Bangladesh":"BD","United Kingdom":"GB","USA":"US","Canada":"CA","Saudi Arabia":"SA","UAE":"AE","Others":"" },
+  flagFor(country){
+    const code = Utils.countryCodes[country];
+    if(!code) return '';
+    return String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
+  }
+};
+
+/* ============================================================
+   STORE — localStorage persistence with quota safety
+============================================================ */
+const Store = {
+  DB: 'mehfil_attendees', TRASH: 'mehfil_trash', USER: 'mehfil_user',
+
+  init(){
+    if(!localStorage.getItem(Store.DB)) localStorage.setItem(Store.DB, '[]');
+    if(!localStorage.getItem(Store.TRASH)) localStorage.setItem(Store.TRASH, '[]');
+    if(!localStorage.getItem(Store.USER)) localStorage.setItem(Store.USER, 'null');
+  },
+
+  _write(key, value){
+    try{
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    }catch(err){
+      alert("Storage is full! Your browser's local storage limit has been reached, so this could not be saved. Please export your data (Entry Logs \u2192 Export Excel) and clear old records, or remove photos from entries to free up space.");
+      return false;
+    }
+  },
+
+  register(u){
+    const user = { ...u, id:Date.now(), trialStarted:new Date().toISOString(), plan:'Basic', subscriptionStatus:'trial', businessName: u.businessName || 'My Organization' };
+    Store._write(Store.USER, user);
+    return user;
+  },
+  updateUserPlan(plan){
+    const u = Store.getCurrentUser(); if(!u) return false;
+    u.plan = plan; u.subscriptionStatus = 'active';
+    return Store._write(Store.USER, u);
+  },
+  updateUserProfile(data){
+    const u = Store.getCurrentUser(); if(!u) return false;
+    return Store._write(Store.USER, { ...u, ...data });
+  },
+  login(email, password){
+    const u = Store.getCurrentUser();
+    if(u && u.email === email && u.password === password){ localStorage.setItem('mehfil_session','true'); return u; }
+    return null;
+  },
+  logout(){ localStorage.removeItem('mehfil_session'); },
+  getCurrentUser(){ try{ return JSON.parse(localStorage.getItem(Store.USER)); }catch(e){ return null; } },
+  isLoggedIn(){ return localStorage.getItem('mehfil_session') === 'true'; },
+  trialDaysLeft(){
+    const u = Store.getCurrentUser(); if(!u) return 0;
+    const diff = Math.floor((Date.now() - new Date(u.trialStarted)) / 86400000);
+    return Math.max(0, 3 - diff);
+  },
+
+  getAttendees(){ try{ return JSON.parse(localStorage.getItem(Store.DB) || '[]'); }catch(e){ return []; } },
+  saveAttendee(a){
+    const rows = Store.getAttendees();
+    const rec = { id:Date.now(), timestamp:a.timestamp || new Date().toISOString(), ...a };
+    rows.push(rec);
+    if(Store._write(Store.DB, rows)){ Cloud.queueEntry(rec); return rec; }
+    return null;
+  },
+  updateAttendee(id, data){
+    const rows = Store.getAttendees();
+    const i = rows.findIndex(r => r.id === parseInt(id));
+    if(i === -1) return null;
+    rows[i] = { ...rows[i], ...data, id: parseInt(id) };
+    return Store._write(Store.DB, rows) ? rows[i] : null;
+  },
+  getTrash(){ try{ return JSON.parse(localStorage.getItem(Store.TRASH) || '[]'); }catch(e){ return []; } },
+  moveToTrash(id){
+    const rows = Store.getAttendees();
+    const i = rows.findIndex(r => r.id === parseInt(id));
+    if(i === -1) return false;
+    const trash = Store.getTrash();
+    const [rec] = rows.splice(i,1);
+    trash.push(rec);
+    Store._write(Store.DB, rows); Store._write(Store.TRASH, trash);
+    return true;
+  },
+  moveAllToTrash(){
+    const rows = Store.getAttendees();
+    if(!rows.length) return false;
+    const trash = [...Store.getTrash(), ...rows];
+    Store._write(Store.DB, []); Store._write(Store.TRASH, trash);
+    return true;
+  },
+  restoreFromTrash(id){
+    const trash = Store.getTrash();
+    const i = trash.findIndex(r => r.id === parseInt(id));
+    if(i === -1) return false;
+    const rows = Store.getAttendees();
+    const [rec] = trash.splice(i,1);
+    rows.push(rec);
+    Store._write(Store.DB, rows); Store._write(Store.TRASH, trash);
+    return true;
+  },
+  permanentDelete(id){
+    const trash = Store.getTrash();
+    const i = trash.findIndex(r => r.id === parseInt(id));
+    if(i === -1) return false;
+    trash.splice(i,1);
+    return Store._write(Store.TRASH, trash);
+  },
+  getStats(){
+    const rows = Store.getAttendees();
+    const s = { total:0, men:0, women:0, children:0, cities:{}, countries:{}, vehicles:{} };
+    rows.forEach(r => {
+      const m = parseInt(r.adultMen||0), w = parseInt(r.adultWomen||0), c = parseInt(r.children||0);
+      s.men+=m; s.women+=w; s.children+=c; s.total += (m+w+c);
+      if(r.city) s.cities[r.city] = (s.cities[r.city]||0) + (m+w+c);
+      if(r.country) s.countries[r.country] = (s.countries[r.country]||0) + (m+w+c);
+      if(r.vehicleMode) s.vehicles[r.vehicleMode] = (s.vehicles[r.vehicleMode]||0) + 1;
+    });
+    return s;
+  },
+  storageUsedKB(){
+    let total = 0;
+    for(const k of [Store.DB, Store.TRASH]){
+      const v = localStorage.getItem(k);
+      if(v) total += v.length;
+    }
+    return Math.round(total/1024);
+  }
+};
+Store.init();
+
+/* ============================================================
+   LANDING
+============================================================ */
+const Landing = {
+  render(){
+    const root = document.getElementById('gate-root');
+    root.innerHTML = `
+      <div class="landing">
+        <div class="land-nav">
+          <div class="brand-mark">
+            <div class="glyph"><i data-lucide="tent-tree"></i></div>
+            <div class="word">Live Intelligence</div>
+          </div>
+          <div class="land-cta-row">
+            <button id="nav-login" class="land-btn-ghost">Client Login</button>
+          </div>
+        </div>
+
+        <div class="land-hero">
+          <div>
+            <h1>Count every guest,<br>without losing the thread.</h1>
+            <p class="lede">Live Intelligence turns CNIC scanning and manual sign-in into one live headcount — men, women, children, city by city — so your team spends the event hosting people, not doing arithmetic.</p>
+            <div class="land-cta-row">
+              <button id="get-started" class="land-btn-primary">Create Free Account</button>
+              <button id="see-login" class="land-btn-ghost">Client Login</button>
+            </div>
+            <div class="trial-note"><i data-lucide="badge-check"></i> 3-day free trial, no card required</div>
+          </div>
+
+          <div class="live-mock">
+            <div class="lm-head"><span>Live headcount</span><span>Updating…</span></div>
+            <div class="lm-count" id="mock-count">4,218</div>
+            <div class="lm-sub">312 men · 288 women · 96 children checked in this hour</div>
+            <div class="lm-bars">
+              <span style="height:40%"></span><span style="height:65%"></span><span style="height:52%"></span>
+              <span style="height:80%"></span><span style="height:38%"></span><span style="height:70%"></span>
+              <span style="height:90%"></span><span style="height:55%"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="land-strip">
+          <div class="strip-item">
+            <div class="num">Scan</div>
+            <h3>CNIC in one photo</h3>
+            <p>Point the camera, and the number is read and validated automatically — gender and headcount fields fill themselves in.</p>
+          </div>
+          <div class="strip-item">
+            <div class="num">Watch</div>
+            <h3>Totals update live</h3>
+            <p>Every entry updates the dashboard instantly — city breakdowns, demographic split, running total.</p>
+          </div>
+          <div class="strip-item">
+            <div class="num">Recover</div>
+            <h3>Nothing is really deleted</h3>
+            <p>Removed entries sit in Trash until you confirm — so a fast-fingered volunteer can't cost you a record.</p>
+          </div>
+        </div>
+
+        <div class="land-foot">Live Intelligence — built for events that don't get a second take.</div>
+      </div>
+    `;
+    Utils.icons();
+    document.getElementById('get-started').onclick = () => App.renderGate('register');
+    document.getElementById('nav-login').onclick = () => App.renderGate('login');
+    document.getElementById('see-login').onclick = () => App.renderGate('login');
+
+    // gentle animated counter, purely decorative
+    let n = 4218;
+    setInterval(() => {
+      n += Math.floor(Math.random()*3);
+      const el = document.getElementById('mock-count');
+      if(el) el.textContent = n.toLocaleString();
+    }, 2200);
+  }
+};
+
+/* ============================================================
+   AUTH
+============================================================ */
+const Auth = {
+  render(type){
+    const isLogin = type === 'login';
+    const root = document.getElementById('gate-root');
+    root.innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <h2>${isLogin ? 'Welcome back' : 'Create your account'}</h2>
+          <p class="sub">${isLogin ? 'Log in to your dashboard' : 'Start your 3-day free trial'}</p>
+          <form id="auth-form">
+            ${!isLogin ? `<div class="field"><label>Full name</label><input type="text" id="a-name" required></div>` : ''}
+            <div class="field"><label>Email address</label><input type="email" id="a-email" required></div>
+            <div class="field"><label>Password</label><input type="password" id="a-password" required minlength="4"></div>
+            <button type="submit" class="btn btn-amber btn-block">${isLogin ? 'Log in' : 'Start free trial'}</button>
+          </form>
+          <div class="auth-divider"><div class="ln"></div>OR<div class="ln"></div></div>
+          <button id="google-btn" class="google-btn">
+            <svg width="17" height="17" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285f4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.834.859-3.048.859-2.344 0-4.328-1.584-5.036-3.711H.957v2.331C2.438 15.938 5.48 18 9 18z" fill="#34a853"/><path d="M3.964 10.706c-.18-.54-.282-1.117-.282-1.706s.102-1.166.282-1.706V4.963H.957C.347 6.179 0 7.551 0 9s.347 2.821.957 4.037l3.007-2.331z" fill="#fbbc05"/><path d="M9 3.579c1.321 0 2.508.454 3.44 1.345l2.582-2.582C13.462.899 11.426 0 9 0 5.48 0 2.438 2.062.957 5.037L3.964 7.37c.708-2.127 2.692-3.791 5.036-3.791z" fill="#ea4335"/></svg>
+            Continue with Google
+          </button>
+          <div class="auth-switch">
+            ${isLogin ? `New here? <a href="#" id="switch">Create an account</a>` : `Already registered? <a href="#" id="switch">Log in</a>`}
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('switch').onclick = (e) => { e.preventDefault(); App.renderGate(isLogin ? 'register' : 'login'); };
+
+    document.getElementById('google-btn').onclick = (e) => {
+      const btn = e.currentTarget;
+      btn.textContent = 'Connecting…'; btn.disabled = true;
+      setTimeout(() => {
+        if(!Store.getCurrentUser()) Store.register({ name:'Google User', email:'user@google.com', password:'gs' });
+        Store.login('user@google.com','gs');
+        App.renderView('dashboard');
+      }, 900);
+    };
+
+    document.getElementById('auth-form').onsubmit = (e) => {
+      e.preventDefault();
+      const email = document.getElementById('a-email').value;
+      const password = document.getElementById('a-password').value;
+      if(isLogin){
+        const u = Store.login(email, password);
+        if(u) App.renderView('dashboard'); else alert('Invalid email or password.');
+      }else{
+        const name = document.getElementById('a-name').value;
+        Store.register({ name, email, password });
+        Store.login(email, password);
+        App.renderView('dashboard');
+      }
+    };
+  }
+};
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+const Dashboard = {
+  render(container){
+    const s = Store.getStats();
+    const topCities = Object.entries(s.cities).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const pct = (n) => s.total ? Math.round(n/s.total*100) : 0;
+    const vRows = Object.entries(s.vehicles || {}).sort((a,b)=>b[1]-a[1]);
+    const vTotal = vRows.reduce((t,[,n])=>t+n,0);
+
+    container.innerHTML = `
+      <div class="section-head">
+        <div></div>
+        <button id="dash-whatsapp-btn" class="btn btn-sm" style="background:#25D366; color:#fff;"><i data-lucide="message-circle"></i> Share full dashboard on WhatsApp</button>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:1.4rem;">
+        <div class="tile tile-hover" style="--bar:var(--brand); --tint:var(--brand-tint);"><div class="t-label">Total attendees</div><div class="t-value">${s.total.toLocaleString()}</div></div>
+        <div class="tile tile-hover" style="--bar:#3B6FA0; --tint:#E7EEF5;"><div class="t-label">Men</div><div class="t-value" style="color:#3B6FA0;">${s.men.toLocaleString()}</div></div>
+        <div class="tile tile-hover" style="--bar:var(--rose); --tint:var(--rose-tint);"><div class="t-label">Women</div><div class="t-value" style="color:var(--rose);">${s.women.toLocaleString()}</div></div>
+        <div class="tile tile-hover" style="--bar:var(--amber); --tint:var(--amber-tint);"><div class="t-label">Children</div><div class="t-value" style="color:var(--amber);">${s.children.toLocaleString()}</div></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 style="font-size:1.05rem; margin-bottom:1rem;">Top cities</h3>
+          ${topCities.length ? topCities.map(([city,count]) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:.6rem 0; border-bottom:1px solid var(--line);">
+              <span>${Utils.escapeHtml(city)}</span><strong>${count.toLocaleString()}</strong>
+            </div>`).join('') : `<div class="empty-state"><i data-lucide="map-pin"></i><div>No entries yet</div></div>`}
+        </div>
+        <div class="card">
+          <h3 style="font-size:1.05rem; margin-bottom:1rem;">Demographic split</h3>
+          <div style="height:18px; background:var(--line); border-radius:99px; display:flex; overflow:hidden;">
+            <div style="width:${pct(s.men)}%; background:#3B6FA0;"></div>
+            <div style="width:${pct(s.women)}%; background:var(--rose);"></div>
+            <div style="width:${pct(s.children)}%; background:var(--amber);"></div>
+          </div>
+          <div style="display:flex; gap:1.2rem; margin-top:1rem; font-size:.82rem; color:var(--ink-soft); flex-wrap:wrap;">
+            <span><span style="display:inline-block;width:9px;height:9px;background:#3B6FA0;border-radius:2px;margin-right:5px;"></span>Men ${pct(s.men)}%</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:var(--rose);border-radius:2px;margin-right:5px;"></span>Women ${pct(s.women)}%</span>
+            <span><span style="display:inline-block;width:9px;height:9px;background:var(--amber);border-radius:2px;margin-right:5px;"></span>Children ${pct(s.children)}%</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1.4rem;">
+        <h3 style="font-size:1.05rem; margin-bottom:1rem;">Vehicle entries ${vTotal ? `<span style="color:var(--ink-soft); font-weight:400; font-size:.85rem;">(${vTotal})</span>` : ''}</h3>
+        ${vRows.length ? vRows.map(([v,n]) => `
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:.6rem 0; border-bottom:1px solid var(--line);">
+            <span><i data-lucide="car" style="width:15px;height:15px; margin-right:.4rem; color:var(--ink-soft);"></i>${Utils.escapeHtml(v)}</span><strong>${n.toLocaleString()}</strong>
+          </div>`).join('') : `<div class="empty-state"><i data-lucide="car"></i><div>No vehicle entries yet</div></div>`}
+      </div>
+    `;
+    Utils.icons();
+
+    document.getElementById('dash-whatsapp-btn').onclick = () => {
+      const topLines = topCities.map(([c,n]) => `  ${c}: ${n}`).join('\n');
+      const msg = `Live Intelligence — dashboard summary\nTotal: ${s.total}\nMen: ${s.men}   Women: ${s.women}   Children: ${s.children}\n${topLines ? 'Top cities:\n'+topLines+'\n' : ''}Updated: ${new Date().toLocaleString()}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+  }
+};
+
+/* ============================================================
+   ENTRY — attendee form + camera / CNIC OCR
+============================================================ */
+const Entry = {
+  manualMode: false,
+  editingId: null,
+
+  customLists(){
+    let cities = [], countries = [];
+    try{ cities = JSON.parse(localStorage.getItem('mehfil_custom_cities')||'[]'); }catch(e){}
+    try{ countries = JSON.parse(localStorage.getItem('mehfil_custom_countries')||'[]'); }catch(e){}
+    return { cities, countries };
+  },
+  rememberCity(city){
+    if(!city) return;
+    if(Utils.cities.includes(city)) return;
+    const c = Entry.customLists();
+    if(!c.cities.includes(city)){ c.cities.push(city); localStorage.setItem('mehfil_custom_cities', JSON.stringify(c.cities)); }
+  },
+  rememberCountry(country){
+    if(!country) return;
+    if(Utils.countries.includes(country)) return;
+    const c = Entry.customLists();
+    if(!c.countries.includes(country)){ c.countries.push(country); localStorage.setItem('mehfil_custom_countries', JSON.stringify(c.countries)); }
+  },
+
+  render(container, editData = null){
+    Entry.editingId = editData ? editData.id : null;
+    const isEditing = !!editData;
+    const showCnic = editData?.cnic !== 'NA' || !editData;
+    const custom = Entry.customLists();
+    const allCities = [...Utils.cities, ...custom.cities];
+    const allCountries = [...Utils.countries, ...custom.countries];
+
+    container.innerHTML = `
+      <div class="card">
+        <div class="section-head">
+          <h2 style="font-size:1.15rem;">${isEditing ? 'Edit record' : (Entry.manualMode ? 'Manual entry' : 'CNIC entry')}</h2>
+          <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+            ${!isEditing ? `
+              <button id="toggle-mode" class="btn btn-ghost btn-sm">Switch to ${Entry.manualMode ? 'CNIC' : 'Manual'} mode</button>
+              <button id="open-bulk-import" class="btn btn-ghost btn-sm"><i data-lucide="images"></i> Import from photo</button>
+              <button id="scan-front-btn" class="btn btn-brand btn-sm"><i data-lucide="camera"></i> Scan CNIC front</button>
+              <button id="scan-back-btn" class="btn btn-amber btn-sm"><i data-lucide="rotate-cw"></i> Scan CNIC back (address)</button>
+            ` : `<button id="cancel-edit" class="btn btn-danger btn-sm">Cancel edit</button>`}
+          </div>
+        </div>
+        <div id="scan-feedback" style="margin-bottom:1.2rem; font-weight:600; font-size:.88rem;"></div>
+
+        <form id="attendee-form">
+          <div class="grid grid-2">
+            <div class="field"><label>Full name</label><input type="text" id="f-name" value="${Utils.escapeHtml(editData?.name)}" required placeholder="Name in English or Urdu"></div>
+            <div class="field"><label>Father's name (optional)</label><input type="text" id="f-father" value="${Utils.escapeHtml(editData?.fatherName)}" placeholder="In English or Urdu"></div>
+          </div>
+          <div class="field"><label>Entry time (auto-filled, editable)</label><input type="datetime-local" id="f-time" value="${editData?.timestamp ? editData.timestamp.slice(0,16) : Entry.nowLocal()}"></div>
+
+          ${showCnic ? `
+          <div class="field">
+            <label>CNIC number ${Entry.manualMode ? '<span style="font-weight:400; color:var(--ink-soft);">(optional in Manual mode — scan still works here)</span>' : ''}</label>
+            <input type="text" id="f-cnic" placeholder="XXXXX-XXXXXXX-X" maxlength="15" value="${Utils.escapeHtml(editData?.cnic)}" style="max-width:260px;">
+            <small id="cnic-feedback" style="display:block; margin-top:.5rem; font-weight:600;"></small>
+          </div>` : ''}
+
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Phone number (optional)</label>
+              <input type="tel" id="f-phone" placeholder="03XX-XXXXXXX" value="${Utils.escapeHtml(editData?.phone)}">
+            </div>
+            <div class="field"><label>Date of birth (optional)</label><input type="date" id="f-dob" value="${Utils.escapeHtml(editData?.dob)}"></div>
+          </div>
+          <div class="field">
+            <label>Extra WhatsApp numbers (optional)</label>
+            <div class="grid grid-2">
+              <input type="tel" id="f-wa2" placeholder="2nd WhatsApp number" value="${Utils.escapeHtml(editData?.whatsapp2)}">
+              <input type="tel" id="f-wa3" placeholder="3rd WhatsApp number" value="${Utils.escapeHtml(editData?.whatsapp3)}">
+            </div>
+          </div>
+          <div class="field"><label>Address (optional — auto-fills from back-of-CNIC scan)</label><textarea id="f-address" rows="2">${Utils.escapeHtml(editData?.address)}</textarea></div>
+          <div class="grid grid-2">
+            <div class="field">
+              <label>Country <span style="font-weight:400; color:var(--ink-soft);">(type to add a new one)</span></label>
+              <input list="dl-countries" id="f-country" value="${Utils.escapeHtml(editData?.country) || 'Pakistan'}">
+              <datalist id="dl-countries">${allCountries.map(c=>`<option value="${Utils.escapeHtml(c)}">`).join('')}</datalist>
+            </div>
+            <div class="field">
+              <label>City <span style="font-weight:400; color:var(--ink-soft);">(type to add a new one)</span></label>
+              <input list="dl-cities" id="f-city" value="${Utils.escapeHtml(editData?.city)}">
+              <datalist id="dl-cities">${allCities.map(c=>`<option value="${Utils.escapeHtml(c)}">`).join('')}</datalist>
+            </div>
+          </div>
+
+          <div class="card" style="background:var(--paper); border-style:dashed; margin-bottom:1.4rem;">
+            <h4 style="margin-bottom:1rem; font-size:.95rem;">Headcount</h4>
+            <div class="grid" style="grid-template-columns:repeat(3,1fr);">
+              <div class="field" style="margin-bottom:0;"><label>Men</label><input type="number" id="f-men" min="0" value="${editData?.adultMen ?? 1}"></div>
+              <div class="field" style="margin-bottom:0;"><label>Women</label><input type="number" id="f-women" min="0" value="${editData?.adultWomen ?? 0}"></div>
+              <div class="field" style="margin-bottom:0;"><label>Children</label><input type="number" id="f-children" min="0" value="${editData?.children ?? 0}"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Attendee photo (optional)</label>
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <button type="button" id="photo-btn" class="btn btn-ghost btn-sm"><i data-lucide="camera"></i> Take photo</button>
+              <div id="photo-preview-wrap" style="position:relative; display:${editData?.photo ? 'block':'none'};">
+                <img id="photo-preview" src="${editData?.photo || ''}" style="width:64px; height:64px; object-fit:cover; border-radius:8px; border:2px solid var(--brand);">
+                <button type="button" id="clear-photo" style="position:absolute; top:-8px; right:-8px; background:var(--danger); color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-weight:700; font-size:11px;">×</button>
+              </div>
+            </div>
+            <input type="hidden" id="f-photo" value="${editData?.photo || ''}">
+            <input type="hidden" id="f-cnic-photo" value="${editData?.cnicPhoto || ''}">
+            <input type="hidden" id="f-cnic-back-photo" value="${editData?.cnicBackPhoto || ''}">
+          </div>
+
+          <div class="field">
+            <label>Occupation / skill (optional)</label>
+            <input type="text" id="f-occupation" value="${Utils.escapeHtml(editData?.occupation)}" placeholder="e.g. Electrician, Doctor, Driver — English or Urdu">
+          </div>
+
+          <div class="field">
+            <label>Arrived by (optional)</label>
+            <div class="grid grid-2">
+              <select id="f-vehicle-mode">
+                <option value="" ${!editData?.vehicleMode ? 'selected' : ''}>Not specified</option>
+                <option value="Car" ${editData?.vehicleMode==='Car'?'selected':''}>Car</option>
+                <option value="Motorcycle" ${editData?.vehicleMode==='Motorcycle'?'selected':''}>Motorcycle</option>
+                <option value="Rickshaw" ${editData?.vehicleMode==='Rickshaw'?'selected':''}>Rickshaw</option>
+                <option value="Qingqi" ${editData?.vehicleMode==='Qingqi'?'selected':''}>Qingqi</option>
+                <option value="Van" ${editData?.vehicleMode==='Van'?'selected':''}>Van / Hiace</option>
+                <option value="Bus" ${editData?.vehicleMode==='Bus'?'selected':''}>Bus</option>
+                <option value="Truck" ${editData?.vehicleMode==='Truck'?'selected':''}>Truck</option>
+                <option value="Walk" ${editData?.vehicleMode==='Walk'?'selected':''}>On foot</option>
+                <option value="Other" ${editData?.vehicleMode==='Other'?'selected':''}>Other</option>
+              </select>
+              <input type="text" id="f-vehicle-number" placeholder="Vehicle / bus number (type it in yourself)" value="${Utils.escapeHtml(editData?.vehicleNumber)}">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-brand btn-block" style="padding:1rem;">${isEditing ? 'Update record' : 'Save & record entry'}</button>
+        </form>
+      </div>
+    `;
+    Utils.icons();
+    Entry.bindEvents();
+  },
+
+  nowLocal(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+  },
+
+  bindEvents(){
+    const toggleBtn = document.getElementById('toggle-mode');
+    if(toggleBtn) toggleBtn.onclick = () => { Entry.manualMode = !Entry.manualMode; Entry.render(document.getElementById('view')); };
+
+    const cancelBtn = document.getElementById('cancel-edit');
+    if(cancelBtn) cancelBtn.onclick = () => App.renderView('logs');
+
+    const bulkBtn = document.getElementById('open-bulk-import');
+    if(bulkBtn) bulkBtn.onclick = () => BulkImport.open();
+
+    const scanFrontBtn = document.getElementById('scan-front-btn');
+    if(scanFrontBtn) scanFrontBtn.onclick = () => Entry.startCamera('front');
+    const scanBackBtn = document.getElementById('scan-back-btn');
+    if(scanBackBtn) scanBackBtn.onclick = () => Entry.startCamera('back');
+
+    const cnicInput = document.getElementById('f-cnic');
+    if(cnicInput){
+      cnicInput.addEventListener('input', (e) => {
+        let v = e.target.value.replace(/\D/g,'');
+        if(v.length > 5) v = v.slice(0,5)+'-'+v.slice(5);
+        if(v.length > 13) v = v.slice(0,13)+'-'+v.slice(13,14);
+        e.target.value = v;
+        const fb = document.getElementById('cnic-feedback');
+        if(Utils.validateCNIC(v)){
+          const g = Utils.genderFromCNIC(v);
+          fb.innerHTML = `<span style="color:var(--brand)">✓ Valid — detected: ${g}</span>`;
+          if(!Entry.editingId){
+            document.getElementById('f-men').value = g==='Male' ? 1 : 0;
+            document.getElementById('f-women').value = g==='Female' ? 1 : 0;
+          }
+        } else { fb.textContent = ''; }
+      });
+    }
+
+    const photoBtn = document.getElementById('photo-btn');
+    if(photoBtn) photoBtn.onclick = () => Entry.startCamera('photo');
+    const clearPhoto = document.getElementById('clear-photo');
+    if(clearPhoto) clearPhoto.onclick = () => {
+      document.getElementById('f-photo').value = '';
+      document.getElementById('photo-preview-wrap').style.display = 'none';
+    };
+
+    // Auto-prefix Pakistani "03" on first keystroke — typing a different prefix (e.g. for a
+    // foreign number) simply overwrites it, since this only fires while the field is still empty.
+    const phoneField = document.getElementById('f-phone');
+    if(phoneField){
+      phoneField.addEventListener('focus', () => { if(!phoneField.value) phoneField.value = '03'; });
+      phoneField.addEventListener('input', () => {
+        let v = phoneField.value.replace(/[^\d+]/g,'');
+        if(/^03\d{2}\d{7}$/.test(v)) v = v.slice(0,4)+'-'+v.slice(4);
+        phoneField.value = v;
+      });
+    }
+
+    // Enter-to-advance
+    const order = ['f-name','f-father','f-time','f-cnic','f-phone','f-wa2','f-wa3','f-dob','f-address','f-country','f-city','f-men','f-women','f-children','f-vehicle-number'];
+    order.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('keydown', (e) => {
+        if(e.key !== 'Enter') return;
+        e.preventDefault();
+        for(let n = i+1; n < order.length; n++){
+          const next = document.getElementById(order[n]);
+          if(next){ next.focus(); if(next.select) next.select(); break; }
+        }
+      });
+    });
+
+    document.getElementById('attendee-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const cnicInput = document.getElementById('f-cnic');
+      const country = document.getElementById('f-country').value;
+      const city = document.getElementById('f-city').value;
+      const data = {
+        timestamp: document.getElementById('f-time').value ? new Date(document.getElementById('f-time').value).toISOString() : null,
+        name: document.getElementById('f-name').value,
+        fatherName: document.getElementById('f-father').value,
+        phone: document.getElementById('f-phone').value,
+        whatsapp2: document.getElementById('f-wa2').value,
+        whatsapp3: document.getElementById('f-wa3').value,
+        dob: document.getElementById('f-dob').value,
+        address: document.getElementById('f-address').value,
+        cnic: cnicInput ? cnicInput.value : 'NA',
+        country, city,
+        adultMen: document.getElementById('f-men').value,
+        adultWomen: document.getElementById('f-women').value,
+        children: document.getElementById('f-children').value,
+        photo: document.getElementById('f-photo').value,
+        cnicPhoto: document.getElementById('f-cnic-photo').value,
+        cnicBackPhoto: document.getElementById('f-cnic-back-photo').value,
+        occupation: document.getElementById('f-occupation').value,
+        vehicleMode: document.getElementById('f-vehicle-mode').value,
+        vehicleNumber: document.getElementById('f-vehicle-number').value
+      };
+      if(cnicInput && !Entry.manualMode && data.cnic !== 'NA' && !Utils.validateCNIC(data.cnic)){
+        alert('Please enter a valid CNIC, or switch to Manual mode.');
+        return;
+      }
+      Entry.rememberCountry(country);
+      Entry.rememberCity(city);
+      if(Entry.editingId){
+        if(Store.updateAttendee(Entry.editingId, data)){ Entry.editingId = null; App.renderView('logs'); }
+      }else{
+        if(Store.saveAttendee(data)) App.renderView('logs');
+      }
+    });
+  },
+
+  /* mode: 'photo' = attendee selfie · 'front' = CNIC front OCR · 'back' = CNIC back (address) OCR */
+  async startCamera(mode){
+    const overlay = document.getElementById('cam-overlay');
+    const video = document.getElementById('video-feed');
+    const status = document.getElementById('ocr-status');
+    const instruction = document.getElementById('cam-instruction');
+    const captureBtn = document.getElementById('capture-btn');
+    const scanLine = document.getElementById('scan-line');
+    const deviceSelect = document.getElementById('cam-device-select');
+
+    const instructions = { front:'Lay the CNIC front-side up, fill the frame', back:'Flip to the back of the CNIC (address side)', photo:'Smile for the photo!' };
+    instruction.textContent = instructions[mode] || '';
+    status.textContent = '';
+    // Warm up the OCR engine while the user lines up the card — the first scan then
+    // starts instantly instead of downloading + initializing the reader after capture.
+    if(mode === 'front' || mode === 'back'){
+      Entry.getOcrWorker(mode === 'front' ? 'eng' : 'eng+urd', ()=>{}).catch(()=>{});
+    }
+    scanLine.style.display = (mode === 'front' || mode === 'back') ? 'block' : 'none';
+    overlay.style.display = 'flex';
+    captureBtn.disabled = false;
+
+    let currentStream = null;
+    const openWithDevice = async (deviceId) => {
+      if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+      const constraints = deviceId
+        ? { video: { deviceId:{ exact:deviceId }, width:{ideal:1280}, height:{ideal:720} } }
+        : { video: { facingMode:'environment', width:{ideal:1280}, height:{ideal:720} } };
+      currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = currentStream;
+    };
+
+    try{
+      await openWithDevice(null);
+      // List cameras only after permission is granted — labels are blank otherwise.
+      // Lets a laptop with an external USB webcam/CNIC scanner pick that device instead of the built-in one.
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      if(cams.length > 1){
+        deviceSelect.style.display = 'block';
+        deviceSelect.innerHTML = cams.map((c,i) => `<option value="${c.deviceId}">${c.label || 'Camera ' + (i+1)}</option>`).join('');
+        deviceSelect.onchange = () => openWithDevice(deviceSelect.value).catch(() => alert('Could not switch to that camera.'));
+      }else{
+        deviceSelect.style.display = 'none';
+      }
+    }catch(err){
+      alert('Camera access denied or not supported on this device.');
+      overlay.style.display = 'none';
+      return;
+    }
+
+    {
+        document.getElementById('close-camera').onclick = () => {
+          if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+          overlay.style.display = 'none';
+        };
+        captureBtn.onclick = async () => {
+          captureBtn.disabled = true;
+          const canvas = document.getElementById('capture-canvas');
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          const imageData = canvas.toDataURL('image/jpeg', 0.92);
+
+          if(mode === 'front' || mode === 'back'){
+            status.style.color = 'var(--amber)';
+            status.textContent = 'Preparing image…';
+            try{
+              const cleanedData = await Entry.preprocessForOCR(canvas);
+              // Front = English only (name/father/CNIC/dates are printed in English there —
+              // mixing in the Urdu model was making it hallucinate Urdu-looking glyphs on
+              // plain English text). Back keeps eng+urd since the address is often Urdu.
+              const ocrLang = mode === 'front' ? 'eng' : 'eng+urd';
+              if(typeof Tesseract === 'undefined'){
+                throw new Error('OCR engine did not load — check your internet connection and reload the page.');
+              }
+              // Reused singleton worker: creating a fresh Tesseract worker on every capture
+              // (downloading the language data each time) is what made scans slow and flaky.
+              const worker = await Entry.getOcrWorker(ocrLang, (m) => {
+                if(m.status === 'recognizing text'){
+                  status.style.color = 'var(--amber)';
+                  status.textContent = `Reading the card… ${Math.round((m.progress||0)*100)}%`;
+                }else if(m.status && /loading|initializing/i.test(m.status)){
+                  status.style.color = 'var(--amber)';
+                  status.textContent = 'Loading the reader… (one-time download, next scans are instant)';
+                }
+              });
+              const { data:{ text } } = await worker.recognize(cleanedData);
+              // The worker is deliberately reused, never terminated here — the next scan is instant.
+
+              if(mode === 'front'){
+                Entry.applyFrontScan(text, imageData);
+              }else{
+                Entry.applyBackScan(text, imageData);
+              }
+              status.style.color = 'var(--brand)';
+              status.textContent = mode === 'front' ? 'Front scanned — check the filled fields below.' : 'Back scanned — check the address below.';
+              setTimeout(() => document.getElementById('close-camera').click(), 900);
+            }catch(err){
+              status.style.color = 'var(--danger)';
+              status.textContent = 'Scanner error: ' + err.message;
+              captureBtn.disabled = false;
+            }
+          }else{
+            document.getElementById('f-photo').value = imageData;
+            document.getElementById('photo-preview').src = imageData;
+            document.getElementById('photo-preview-wrap').style.display = 'block';
+            document.getElementById('close-camera').click();
+          }
+        };
+    }
+  },
+
+  /* Upscales, desaturates and contrast-stretches the captured frame before handing it to
+     Tesseract. Plain webcam/phone captures of a card (slight blur, uneven lighting, low
+     contrast ink) read far more reliably after this than the raw frame. */
+  /* Singleton OCR workers, one per language. Creating a Tesseract worker downloads the
+     language data and starts the engine — doing that on EVERY capture is what made scans
+     slow (and flaky on weak connections). Now it happens once; every later scan reuses it. */
+  ocrWorkers: {},
+
+  getOcrWorker(lang, onProgress){
+    if(Entry.ocrWorkers[lang]) return Promise.resolve(Entry.ocrWorkers[lang]);
+    if(!Entry.ocrWorkers[lang + '__promise']){
+      const p = (async () => {
+        const oem = (typeof Tesseract !== 'undefined' && Tesseract.OEM && Tesseract.OEM.LSTM_ONLY) || 1;
+        let worker = null;
+        try{
+          worker = await Tesseract.createWorker(lang, oem, { logger: onProgress });
+        }catch(e){
+          // Fallback for API shape differences between tesseract.js builds.
+          worker = await Tesseract.createWorker({ logger: onProgress });
+          await worker.loadLanguage(lang);
+          await worker.initialize(lang);
+        }
+        try{ await worker.setParameters({ tessedit_pageseg_mode: '6' }); }catch(e){}
+        Entry.ocrWorkers[lang] = worker;
+        return worker;
+      })();
+      Entry.ocrWorkers[lang + '__promise'] = p;
+      p.catch(() => { delete Entry.ocrWorkers[lang + '__promise']; });
+    }
+    return Entry.ocrWorkers[lang + '__promise'];
+  },
+
+  preprocessForOCR(sourceCanvas){
+    return new Promise((resolve) => {
+      // Cap the working size — bigger frames don't read better, they just read slower.
+      const MAX_W = 2200;
+      let scale = 2;
+      if(sourceCanvas.width * scale > MAX_W) scale = MAX_W / sourceCanvas.width;
+      const out = document.createElement('canvas');
+      out.width = sourceCanvas.width * scale;
+      out.height = sourceCanvas.height * scale;
+      const ctx = out.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(sourceCanvas, 0, 0, out.width, out.height);
+
+      const imgData = ctx.getImageData(0, 0, out.width, out.height);
+      const d = imgData.data;
+
+      // Grayscale first, tracking the darkest/lightest pixel for a contrast stretch.
+      let min = 255, max = 0;
+      const gray = new Uint8ClampedArray(d.length / 4);
+      for(let i = 0, p = 0; i < d.length; i += 4, p++){
+        const g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+        gray[p] = g;
+        if(g < min) min = g;
+        if(g > max) max = g;
+      }
+      const range = Math.max(1, max - min);
+      for(let i = 0, p = 0; i < d.length; i += 4, p++){
+        const stretched = ((gray[p] - min) / range) * 255;
+        d[i] = d[i+1] = d[i+2] = stretched;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      resolve(out.toDataURL('image/png'));
+    });
+  },
+
+  applyFrontScan(text, imageData){
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const flat = text.replace(/\n/g,' ');
+    const fb = document.getElementById('scan-feedback');
+    let found = [];
+
+    // Tolerates a dash, a space, or nothing between the CNIC's digit groups — OCR often
+    // misreads the dash as a space or drops it.
+    const cnicMatch = flat.match(/\d{5}[\s-]?\d{7}[\s-]?\d{1}\b/);
+    if(cnicMatch){
+      const digits = cnicMatch[0].replace(/\D/g,'');
+      const cnic = `${digits.slice(0,5)}-${digits.slice(5,12)}-${digits.slice(12,13)}`;
+      const cnicField = document.getElementById('f-cnic');
+      if(cnicField){ cnicField.value = cnic; cnicField.dispatchEvent(new Event('input')); found.push('CNIC'); }
+    }
+
+    // A Pakistani CNIC front prints THREE dates (birth, issue, expiry). Prefer the date printed
+    // nearest a "date of birth" label; fall back to the first date-like value on the card.
+    // Accepts DD-MM-YYYY, DD.MM.YYYY, DD/MM/YYYY.
+    const toISODate = (d,m,y) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dateRe = /\b(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})\b/;
+    let dobISO = '';
+    const dobLabelIdx = lines.findIndex(l => /date\s*of\s*birth|\bdob\b|date\s*birth|\u067e\u06cc\u062f\u0627\u0626\u0634/i.test(l));
+    const dobSearchLines = dobLabelIdx >= 0 ? lines.slice(dobLabelIdx, dobLabelIdx + 3) : lines;
+    const validDMY = (d,m) => +d >= 1 && +d <= 31 && +m >= 1 && +m <= 12;
+    for(const l of dobSearchLines){
+      const m = l.match(dateRe);
+      if(m && validDMY(m[1],m[2])){ dobISO = toISODate(m[1],m[2],m[3]); break; }
+      // OCR sometimes mangles the separators ("1508-1980"): try the digits alone.
+      const dg = l.replace(/\D/g,'');
+      if(dg.length === 8){
+        const m8 = dg.match(/^(\d{2})(\d{2})(\d{4})$/);
+        if(m8 && validDMY(m8[1],m8[2])){ dobISO = toISODate(m8[1],m8[2],m8[3]); break; }
+      }
+    }
+    if(!dobISO){ const m = flat.match(dateRe); if(m && validDMY(m[1],m[2])) dobISO = toISODate(m[1],m[2],m[3]); }
+    if(dobISO){
+      const yr = parseInt(dobISO.slice(0,4), 10), nowY = new Date().getFullYear();
+      if(yr >= 1900 && yr <= nowY){
+        document.getElementById('f-dob').value = dobISO;
+        found.push('date of birth');
+      }
+    }
+
+    // Keep Urdu/Arabic script (\u0600-\u06FF) as well as Latin letters — earlier version stripped Urdu text out.
+    const cleanName = (s) => s.replace(/[^a-zA-Z\u0600-\u06FF .]/g,'').replace(/\s+/g,' ').trim();
+    const findAfterLabel = (labels) => {
+      for(let i=0;i<lines.length;i++){
+        const l = lines[i].toLowerCase();
+        if(labels.some(lab => l.includes(lab))){
+          const sameLine = lines[i].split(/[:\-]/).slice(1).join(' ').trim();
+          if(sameLine && sameLine.length > 1) return sameLine;
+          if(lines[i+1]) return lines[i+1];
+        }
+      }
+      return '';
+    };
+
+    let name = findAfterLabel(['name','نام']);
+    let father = findAfterLabel(['father','husband','والد','شوہر']);
+
+    // Fallback when the labels themselves weren't read cleanly: a Pakistani CNIC front's
+    // layout is fixed (Name, then Father/Husband Name, before Gender/Identity Number), so the
+    // first two "clean" text lines — skipping the boilerplate government header words — are
+    // usually Name then Father's Name, in that order.
+    if(!name || !father){
+      const noise = /islamic|republic|pakistan|government|national|identity|card|gender|male|female|country|stay|date|birth|issue|expiry|number/i;
+      const candidates = lines.filter(l => {
+        const letters = l.replace(/[^a-zA-Z\u0600-\u06FF]/g,'');
+        return letters.length >= 3 && !noise.test(l) && !/\d{4,}/.test(l);
+      });
+      if(!name && candidates[0]) name = candidates[0];
+      if(!father && candidates[1]) father = candidates[1];
+    }
+
+    if(name){ document.getElementById('f-name').value = cleanName(name); found.push('name'); }
+    if(father){ document.getElementById('f-father').value = cleanName(father); found.push("father's name"); }
+
+    document.getElementById('f-cnic-photo').value = imageData;
+    document.getElementById('f-time').value = Entry.nowLocal();
+
+    Entry.showScanFeedback(fb, found, 'front', text);
+  },
+
+  /* Common feedback renderer for both scans — always shows the raw OCR text in a small
+     expandable box, so even a poor read still lets the person copy the right value by hand
+     instead of hitting a dead end. */
+  showScanFeedback(fb, found, mode, rawText){
+    const summary = found.length
+      ? `Auto-filled from ${mode} scan: ${found.join(', ')}. Please double-check each field.`
+      : `Card read, but fields could not be confidently detected — check the raw text below, or fill them in manually.`;
+    fb.style.color = found.length ? 'var(--brand)' : 'var(--danger)';
+    fb.innerHTML = `
+      <div>${summary}</div>
+      <details style="margin-top:.5rem; font-weight:400;">
+        <summary style="cursor:pointer; color:var(--ink-soft); font-size:.82rem;">Show raw scanned text</summary>
+        <pre style="white-space:pre-wrap; font-size:.78rem; background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:.6rem; margin-top:.4rem; max-height:160px; overflow:auto; font-family:inherit;">${Utils.escapeHtml(rawText.trim()) || '(nothing readable)'}</pre>
+      </details>`;
+  },
+
+  applyBackScan(text, imageData){
+    document.getElementById('f-cnic-back-photo').value = imageData;
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    const fb = document.getElementById('scan-feedback');
+    let addressLines = [];
+    let capture = false;
+    const addressLabel = /address|adress|پتہ|ایڈریس|مستقل|موجودہ/i;
+    for(const line of lines){
+      if(addressLabel.test(line)){
+        capture = true;
+        const after = line.replace(addressLabel, '').replace(/^[:\-\s]+/,'').trim();
+        if(after) addressLines.push(after);
+        continue;
+      }
+      if(capture){
+        if(/^[A-Z0-9\-]{10,}$/.test(line.replace(/\s/g,''))) break; // looks like a barcode/number block — stop
+        addressLines.push(line);
+        if(addressLines.length >= 3) break;
+      }
+    }
+    // Deliberately no "guess a line" fallback when the Address label itself isn't read — an
+    // unlabeled guess was landing on unrelated OCR noise more often than it landed on the address.
+    const address = addressLines.join(', ');
+    if(address) document.getElementById('f-address').value = address;
+    Entry.showScanFeedback(fb, address ? ['address'] : [], 'back', text);
+  }
+};
+
+/* ============================================================
+   BULK IMPORT — one photo of a register page → many draft entries
+============================================================ */
+const BulkImport = {
+  rows: [],
+
+  open(){
+    const overlay = document.getElementById('bulk-overlay');
+    overlay.style.display = 'flex';
+    document.getElementById('bulk-step-upload').style.display = 'block';
+    document.getElementById('bulk-step-review').style.display = 'none';
+    document.getElementById('bulk-preview-wrap').style.display = 'none';
+    document.getElementById('bulk-ocr-status').textContent = '';
+    document.getElementById('bulk-extract-btn').disabled = true;
+    const fileInput = document.getElementById('bulk-file-input');
+    fileInput.value = '';
+    BulkImport.rows = [];
+    Utils.icons();
+
+    document.getElementById('bulk-close').onclick = () => { overlay.style.display = 'none'; };
+
+    fileInput.onchange = (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('bulk-preview-img').src = ev.target.result;
+        document.getElementById('bulk-preview-wrap').style.display = 'block';
+        document.getElementById('bulk-extract-btn').disabled = false;
+        BulkImport._imageData = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    document.getElementById('bulk-extract-btn').onclick = BulkImport.runOCR;
+    document.getElementById('bulk-add-row').onclick = () => { BulkImport.rows.push(BulkImport.blankRow()); BulkImport.renderTable(); };
+    document.getElementById('bulk-import-btn').onclick = BulkImport.importChecked;
+  },
+
+  blankRow(){ return { include:true, name:'', cnic:'', phone:'', city:'', men:1, women:0, children:0 }; },
+
+  async runOCR(){
+    const status = document.getElementById('bulk-ocr-status');
+    const btn = document.getElementById('bulk-extract-btn');
+    btn.disabled = true;
+    status.style.color = 'var(--amber)';
+    status.textContent = 'Reading the photo… this can take a moment for a full page.';
+    try{
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = BulkImport._imageData; });
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = img.width; srcCanvas.height = img.height;
+      srcCanvas.getContext('2d').drawImage(img, 0, 0);
+      const cleanedData = await Entry.preprocessForOCR(srcCanvas);
+
+      const worker = await Tesseract.createWorker('eng+urd', 1, {
+        logger: (m) => { if(m.status === 'recognizing text') status.textContent = `Reading the photo… ${Math.round((m.progress||0)*100)}%`; }
+      });
+      const { data:{ text } } = await worker.recognize(cleanedData);
+      await worker.terminate();
+      BulkImport.rows = BulkImport.parseLines(text);
+      status.style.color = 'var(--brand)';
+      status.textContent = `Found ${BulkImport.rows.length} probable row(s) — review them below before importing.`;
+      document.getElementById('bulk-step-upload').style.display = 'none';
+      document.getElementById('bulk-step-review').style.display = 'block';
+      BulkImport.renderTable();
+    }catch(err){
+      status.style.color = 'var(--danger)';
+      status.textContent = 'Could not read the photo: ' + err.message;
+      btn.disabled = false;
+    }
+  },
+
+  parseLines(text){
+    const cnicRe = /\d{5}-?\d{7}-?\d{1}/;
+    const phoneRe = /03\d{2}[-\s]?\d{7}|0\d{2,4}[-\s]?\d{6,8}/;
+    const cityList = Utils.cities;
+
+    return text.split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length >= 3)
+      .map(line => {
+        let rest = line;
+        let cnic = '', phone = '', city = '';
+
+        const cnicMatch = rest.match(cnicRe);
+        if(cnicMatch){ cnic = cnicMatch[0].replace(/^(\d{5})(\d{7})(\d)$/,'$1-$2-$3'); rest = rest.replace(cnicMatch[0], ''); }
+
+        const phoneMatch = rest.match(phoneRe);
+        if(phoneMatch){ phone = phoneMatch[0]; rest = rest.replace(phoneMatch[0], ''); }
+
+        const foundCity = cityList.find(c => rest.toLowerCase().includes(c.toLowerCase()));
+        if(foundCity){ city = foundCity; rest = rest.replace(new RegExp(foundCity,'i'), ''); }
+
+        const name = rest.replace(/[|_,;:.\-]+/g,' ').replace(/\s+/g,' ').trim();
+
+        return { include:true, name, cnic, phone, city, men:1, women:0, children:0 };
+      });
+  },
+
+  renderTable(){
+    const tbody = document.getElementById('bulk-tbody');
+    tbody.innerHTML = BulkImport.rows.map((r, i) => `
+      <tr class="row">
+        <td><input type="checkbox" data-i="${i}" data-f="include" ${r.include ? 'checked' : ''} style="width:16px; height:16px;"></td>
+        <td><input type="text" data-i="${i}" data-f="name" value="${Utils.escapeHtml(r.name)}" style="min-width:130px;"></td>
+        <td><input type="text" data-i="${i}" data-f="cnic" value="${Utils.escapeHtml(r.cnic)}" style="min-width:130px;"></td>
+        <td><input type="text" data-i="${i}" data-f="phone" value="${Utils.escapeHtml(r.phone)}" style="min-width:110px;"></td>
+        <td><input type="text" data-i="${i}" data-f="city" value="${Utils.escapeHtml(r.city)}" style="min-width:90px;"></td>
+        <td><input type="number" min="0" data-i="${i}" data-f="men" value="${r.men}" style="width:56px;"></td>
+        <td><input type="number" min="0" data-i="${i}" data-f="women" value="${r.women}" style="width:56px;"></td>
+        <td><input type="number" min="0" data-i="${i}" data-f="children" value="${r.children}" style="width:56px;"></td>
+        <td><button class="icon-btn bulk-remove" data-i="${i}" style="color:var(--danger);"><i data-lucide="x"></i></button></td>
+      </tr>
+    `).join('');
+    Utils.icons();
+
+    tbody.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const i = parseInt(inp.dataset.i), f = inp.dataset.f;
+        BulkImport.rows[i][f] = inp.type === 'checkbox' ? inp.checked : (inp.type === 'number' ? inp.value : inp.value);
+      });
+    });
+    tbody.querySelectorAll('.bulk-remove').forEach(b => {
+      b.onclick = () => { BulkImport.rows.splice(parseInt(b.dataset.i), 1); BulkImport.renderTable(); };
+    });
+  },
+
+  importChecked(){
+    const toImport = BulkImport.rows.filter(r => r.include && (r.name || r.cnic || r.phone));
+    if(!toImport.length){ alert('No checked rows with any data to import.'); return; }
+    let saved = 0;
+    toImport.forEach(r => {
+      const ok = Store.saveAttendee({
+        name: r.name, cnic: r.cnic || 'NA', phone: r.phone, city: r.city, country: 'Pakistan',
+        adultMen: r.men || 0, adultWomen: r.women || 0, children: r.children || 0
+      });
+      if(ok) saved++;
+    });
+    document.getElementById('bulk-overlay').style.display = 'none';
+    alert(`Imported ${saved} of ${toImport.length} row(s). Please double-check them in Entry Logs.`);
+    App.renderView('logs');
+  }
+};
+
+/* ============================================================
+   LOGS
+============================================================ */
+const Logs = {
+  /* Download names carry the CNIC number, front and back separately:
+     CNIC_3520212345678_front.jpg / CNIC_3520212345678_back.jpg */
+  cnicFileName(cnic, side){
+    const digits = String(cnic || '').replace(/\D/g, '') || 'unknown';
+    return `CNIC_${digits}_${side}.jpg`;
+  },
+  rowHtml(r){
+    const total = (parseInt(r.adultMen)||0)+(parseInt(r.adultWomen)||0)+(parseInt(r.children)||0);
+    const flag = Utils.flagFor(r.country);
+    const vehicle = r.vehicleMode ? `${r.vehicleMode}${r.vehicleNumber ? ' · '+Utils.escapeHtml(r.vehicleNumber) : ''}` : '—';
+    return `
+      <tr class="row">
+        <td style="color:var(--ink-soft); font-size:.82rem;">${Utils.fmtDate(r.timestamp)}</td>
+        <td>${r.photo ? `<img class="avatar-thumb" src="${r.photo}">` : `<div class="avatar-fallback"><i data-lucide="user" style="width:16px;height:16px;"></i></div>`}</td>
+        <td><div style="font-weight:600;">${Utils.escapeHtml(r.name) || '—'}</div><div style="font-size:.8rem; color:var(--ink-soft);">${Utils.escapeHtml(r.phone)}</div></td>
+        <td style="font-size:.85rem;">${r.cnic === 'NA' ? '<span class="badge badge-amber">Manual</span>' : Utils.escapeHtml(r.cnic)}</td>
+        <td>
+          <div style="display:flex; gap:.3rem;">
+            ${r.cnicPhoto ? `<a href="${r.cnicPhoto}" target="_blank" title="View front"><img src="${r.cnicPhoto}" style="width:30px;height:20px;object-fit:cover;border-radius:3px;border:1px solid var(--line);"></a>` : ''}
+            ${r.cnicBackPhoto ? `<a href="${r.cnicBackPhoto}" target="_blank" title="View back"><img src="${r.cnicBackPhoto}" style="width:30px;height:20px;object-fit:cover;border-radius:3px;border:1px solid var(--line);"></a>` : ''}
+            ${r.cnicPhoto ? `<a href="${r.cnicPhoto}" download="${Logs.cnicFileName(r.cnic,'front')}" class="icon-btn" style="width:26px;height:26px;" title="Download front scan"><i data-lucide="download" style="width:13px;height:13px;"></i></a>` : ''}
+            ${r.cnicBackPhoto ? `<a href="${r.cnicBackPhoto}" download="${Logs.cnicFileName(r.cnic,'back')}" class="icon-btn" style="width:26px;height:26px;" title="Download back scan"><i data-lucide="download" style="width:13px;height:13px;"></i></a>` : ''}
+            ${(!r.cnicPhoto && !r.cnicBackPhoto && r.cnic !== 'NA') ? '<span style="color:var(--ink-soft); font-size:.75rem;">no scan saved</span>' : ''}
+          </div>
+        </td>
+        <td>${Utils.escapeHtml(r.city)||'—'}, ${flag} ${Utils.escapeHtml(r.country)}</td>
+        <td style="font-size:.83rem;">${vehicle}</td>
+        <td>${r.adultMen} / ${r.adultWomen} / ${r.children}</td>
+        <td><strong>${total}</strong></td>
+        <td>
+          <div style="display:flex; gap:.4rem;">
+            <button class="icon-btn edit-btn" data-id="${r.id}" title="Edit"><i data-lucide="edit-3"></i></button>
+            <button class="icon-btn security-btn" data-id="${r.id}" title="Share to security" style="color:#25D366;"><i data-lucide="shield"></i></button>
+            <button class="icon-btn del-btn" data-id="${r.id}" title="Delete" style="color:var(--danger);"><i data-lucide="trash-2"></i></button>
+          </div>
+        </td>
+      </tr>`;
+  },
+
+  render(container){
+    const rows = Store.getAttendees().reverse();
+    container.innerHTML = `
+      <div class="card" style="max-width:100%;">
+        <div class="section-head">
+          <h2 style="font-size:1.15rem;">Recent entries</h2>
+          <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+            <button id="import-btn" class="btn btn-ghost btn-sm"><i data-lucide="upload"></i> Import CSV</button>
+            <button id="export-btn" class="btn btn-ghost btn-sm"><i data-lucide="file-spreadsheet"></i> Export Excel</button>
+            <button id="export-pdf-btn" class="btn btn-ghost btn-sm"><i data-lucide="file-text"></i> Export PDF</button>
+            <button id="whatsapp-share-btn" class="btn btn-sm" style="background:#25D366; color:#fff;"><i data-lucide="message-circle"></i> Share on WhatsApp</button>
+            <button id="clear-all-btn" class="btn btn-danger btn-sm"><i data-lucide="trash-2"></i> Clear to trash</button>
+            <input type="file" id="import-input" accept=".csv" style="display:none;">
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <div class="field" style="margin-bottom:0;"><label>Search name / CNIC / phone</label><input type="text" id="q-search" placeholder="Search…"></div>
+          <div class="field" style="margin-bottom:0;"><label>Filter by date</label><input type="date" id="q-date"></div>
+          <div class="field" style="margin-bottom:0;">
+            <label>Entry mode</label>
+            <select id="q-mode"><option value="all">All modes</option><option value="manual">Manual only</option><option value="ocr">CNIC / OCR only</option></select>
+          </div>
+          <button id="q-reset" class="btn btn-ghost btn-sm">Reset</button>
+        </div>
+
+        <div class="table-wrap">
+          <table style="min-width:1260px;">
+            <thead><tr><th>Time</th><th>Photo</th><th>Basic info</th><th>CNIC / Mode</th><th>CNIC card</th><th>Location</th><th>Arrived by</th><th>M / W / C</th><th>Total</th><th>Actions</th></tr></thead>
+            <tbody id="logs-tbody">
+              ${rows.length ? rows.map(Logs.rowHtml).join('') : `<tr><td colspan="10"><div class="empty-state"><i data-lucide="inbox"></i><div>No entries yet</div></div></td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    Utils.icons();
+    Logs.bindEvents();
+  },
+
+  bindEvents(){
+    document.getElementById('export-btn').onclick = Logs.exportCSV;
+    document.getElementById('export-pdf-btn').onclick = Logs.exportPDF;
+    document.getElementById('whatsapp-share-btn').onclick = Logs.shareWhatsApp;
+
+    document.getElementById('clear-all-btn').onclick = () => {
+      if(confirm('Move ALL records to Trash?')){
+        if(Store.moveAllToTrash()){ Logs.render(document.getElementById('view')); }
+        else alert('No records to move.');
+      }
+    };
+
+    const importInput = document.getElementById('import-input');
+    document.getElementById('import-btn').onclick = () => importInput.click();
+    importInput.onchange = Logs.importCSV;
+
+    const search = document.getElementById('q-search'), date = document.getElementById('q-date'), mode = document.getElementById('q-mode');
+    const applyFilter = () => {
+      const q = search.value.toLowerCase(), d = date.value, m = mode.value;
+      const filtered = Store.getAttendees().reverse().filter(r => {
+        const matchQ = (r.name||'').toLowerCase().includes(q) || (r.cnic||'').toLowerCase().includes(q) || (r.phone||'').includes(q);
+        const matchD = !d || (r.timestamp||'').startsWith(d);
+        let matchM = true;
+        if(m === 'manual') matchM = r.cnic === 'NA';
+        if(m === 'ocr') matchM = r.cnic !== 'NA';
+        return matchQ && matchD && matchM;
+      });
+      const tbody = document.getElementById('logs-tbody');
+      tbody.innerHTML = filtered.length ? filtered.map(Logs.rowHtml).join('') : `<tr><td colspan="10"><div class="empty-state"><i data-lucide="search-x"></i><div>No matching entries</div></div></td></tr>`;
+      Utils.icons();
+      Logs.bindRowActions();
+    };
+    search.addEventListener('input', applyFilter);
+    date.addEventListener('change', applyFilter);
+    mode.addEventListener('change', applyFilter);
+    document.getElementById('q-reset').onclick = () => { search.value=''; date.value=''; mode.value='all'; applyFilter(); };
+
+    Logs.bindRowActions();
+  },
+
+  bindRowActions(){
+    document.querySelectorAll('.edit-btn').forEach(b => b.onclick = () => {
+      const rec = Store.getAttendees().find(r => r.id === parseInt(b.dataset.id));
+      if(rec) App.renderView('entry', rec);
+    });
+    document.querySelectorAll('.del-btn').forEach(b => b.onclick = () => {
+      if(confirm('Move this entry to Trash?')){
+        if(Store.moveToTrash(b.dataset.id)) Logs.render(document.getElementById('view'));
+      }
+    });
+    document.querySelectorAll('.security-btn').forEach(b => b.onclick = () => {
+      const rec = Store.getAttendees().find(r => r.id === parseInt(b.dataset.id));
+      if(rec) Logs.shareToSecurity(rec);
+    });
+  },
+
+  /* Shares one entry's key details — including photo and vehicle/parking info — to security via
+     the device share sheet when available (so the photo actually attaches), or a WhatsApp text
+     message with the details spelled out when it isn't. */
+  async shareToSecurity(r){
+    const vehicle = r.vehicleMode ? `${r.vehicleMode}${r.vehicleNumber ? ' - ' + r.vehicleNumber : ''}` : 'Not specified';
+    const summary = `Security check — Live Intelligence entry\nName: ${r.name||'—'}\nCNIC: ${r.cnic==='NA'?'Manual entry':r.cnic}\nPhone: ${r.phone||'—'}\nArrived by: ${vehicle}\nTime: ${Utils.fmtDate(r.timestamp)}`;
+
+    if(r.photo && navigator.canShare){
+      try{
+        const res = await fetch(r.photo);
+        const blob = await res.blob();
+        const file = new File([blob], `entry_${r.id}.jpg`, { type:'image/jpeg' });
+        if(navigator.canShare({ files:[file] })){
+          await navigator.share({ files:[file], title:'Security check', text: summary });
+          return;
+        }
+      }catch(err){ /* fall through to text-only share */ }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(summary)}`, '_blank');
+  },
+
+  exportCSV(){
+    const rows = Store.getAttendees();
+    if(!rows.length){ alert('No data to export.'); return; }
+    const headers = ["Timestamp","Name","Father Name","Phone","DOB","Address","CNIC","Country","City","Men","Women","Children","Total"];
+    const csv = [headers.join(',')];
+    rows.forEach(r => {
+      const total = (parseInt(r.adultMen)||0)+(parseInt(r.adultWomen)||0)+(parseInt(r.children)||0);
+      csv.push([
+        r.timestamp, `"${(r.name||'').replace(/"/g,'""')}"`, `"${(r.fatherName||'').replace(/"/g,'""')}"`,
+        `"${(r.phone||'').replace(/"/g,'""')}"`, `"${(r.dob||'').replace(/"/g,'""')}"`, `"${(r.address||'').replace(/"/g,'""')}"`,
+        r.cnic, `"${(r.country||'').replace(/"/g,'""')}"`, `"${(r.city||'').replace(/"/g,'""')}"`,
+        r.adultMen, r.adultWomen, r.children, total
+      ].join(','));
+    });
+    const blob = new Blob(["\ufeff"+csv.join('\n')], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `mehfil_entries_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  },
+
+  /* Builds a printable report and opens the browser Print dialog — pick "Save as PDF" there.
+     Uses only native browser printing, so it needs no internet connection and no extra library. */
+  exportPDF(){
+    const rows = Store.getAttendees();
+    if(!rows.length){ alert('No data to export.'); return; }
+    const s = Store.getStats();
+    const u = Store.getCurrentUser();
+    const w = window.open('', '_blank');
+    if(!w){ alert('Please allow pop-ups to export a PDF.'); return; }
+    w.document.write(`
+      <html><head><title>Live Intelligence Entries — ${new Date().toLocaleDateString()}</title>
+      <style>
+        body{font-family:Arial,sans-serif; padding:24px; color:#1A2420;}
+        h1{margin-bottom:2px;} .sub{color:#555; margin-bottom:18px; font-size:13px;}
+        table{width:100%; border-collapse:collapse; font-size:11px;}
+        th,td{border:1px solid #ccc; padding:6px 8px; text-align:left;}
+        th{background:#f0f0f0;}
+        .stats{display:flex; gap:24px; margin-bottom:18px; font-size:13px;}
+        @media print{ .no-print{display:none;} }
+      </style></head><body>
+      <h1>${u?.businessName || 'Live Intelligence'} — Attendee Report</h1>
+      <div class="sub">Generated ${new Date().toLocaleString()}</div>
+      <div class="stats">
+        <div><strong>${s.total}</strong> total</div>
+        <div><strong>${s.men}</strong> men</div>
+        <div><strong>${s.women}</strong> women</div>
+        <div><strong>${s.children}</strong> children</div>
+      </div>
+      <table>
+        <thead><tr><th>Time</th><th>Name</th><th>CNIC</th><th>Phone</th><th>City</th><th>Country</th><th>M</th><th>W</th><th>C</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr>
+            <td>${Utils.fmtDate(r.timestamp)}</td><td>${Utils.escapeHtml(r.name)||''}</td>
+            <td>${r.cnic==='NA'?'Manual':Utils.escapeHtml(r.cnic)}</td><td>${Utils.escapeHtml(r.phone)||''}</td>
+            <td>${Utils.escapeHtml(r.city)||''}</td><td>${Utils.escapeHtml(r.country)||''}</td>
+            <td>${r.adultMen||0}</td><td>${r.adultWomen||0}</td><td>${r.children||0}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p class="no-print" style="margin-top:20px; color:#666; font-size:12px;">In the print dialog, choose "Save as PDF" as the destination.</p>
+      <script>window.onload = () => window.print();<\/script>
+      </body></html>
+    `);
+    w.document.close();
+  },
+
+  /* Shares the CSV export directly through the device share sheet (WhatsApp included) when the
+     browser supports the Web Share API with files (most Android/Chrome). Otherwise falls back to
+     downloading the CSV and opening a WhatsApp chat with instructions to attach it manually —
+     browsers aren't allowed to attach a file to WhatsApp automatically for security reasons. */
+  async shareWhatsApp(){
+    const rows = Store.getAttendees();
+    if(!rows.length){ alert('No data to share.'); return; }
+
+    const headers = ["Timestamp","Name","CNIC","Phone","City","Country","Men","Women","Children"];
+    const csv = [headers.join(',')];
+    rows.forEach(r => csv.push([r.timestamp, `"${(r.name||'').replace(/"/g,'""')}"`, r.cnic, r.phone||'', r.city||'', r.country||'', r.adultMen||0, r.adultWomen||0, r.children||0].join(',')));
+    const fileName = `mehfil_entries_${new Date().toISOString().split('T')[0]}.csv`;
+    const file = new File(["\ufeff"+csv.join('\n')], fileName, { type:'text/csv' });
+
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      try{
+        await navigator.share({ files:[file], title:'Live Intelligence entries', text:`Attendee export — ${rows.length} records` });
+        return;
+      }catch(err){ /* user cancelled or share failed — fall through to manual flow */ }
+    }
+
+    Logs.exportCSV();
+    const msg = encodeURIComponent(`Live Intelligence attendee export (${rows.length} records) — the CSV file just downloaded, please attach it here manually.`);
+    window.open(`https://wa.me/?text=${msg}`, '_blank');
+  },
+
+  importCSV(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const rowsRaw = ev.target.result.split('\n').filter(r => r.trim() !== '');
+      if(rowsRaw.length < 2){ alert('Invalid or empty CSV file.'); return; }
+      const parseRow = (row) => {
+        const out = []; let cell=''; let q=false;
+        for(let i=0;i<row.length;i++){
+          const c = row[i];
+          if(c === '"' && row[i+1] === '"'){ cell+='"'; i++; }
+          else if(c === '"'){ q = !q; }
+          else if(c === ',' && !q){ out.push(cell.trim()); cell=''; }
+          else cell += c;
+        }
+        out.push(cell.trim()); return out;
+      };
+      const headers = parseRow(rowsRaw[0]);
+      const keyMap = { "Timestamp":"timestamp","Name":"name","Father Name":"fatherName","Phone":"phone","DOB":"dob","Address":"address","CNIC":"cnic","Country":"country","City":"city","Men":"adultMen","Women":"adultWomen","Children":"children" };
+      const records = rowsRaw.slice(1).map(row => {
+        const values = parseRow(row); const obj = {};
+        headers.forEach((h,i) => { const key = keyMap[h]; if(key) obj[key] = values[i] || ''; });
+        return obj;
+      });
+      if(confirm(`Import ${records.length} records? Existing records will remain.`)){
+        records.forEach(r => Store.saveAttendee(r));
+        Logs.render(document.getElementById('view'));
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+};
+
+/* ============================================================
+   TRASH
+============================================================ */
+const Trash = {
+  rowHtml(r){
+    return `
+      <tr class="row">
+        <td style="color:var(--ink-soft); font-size:.82rem;">${Utils.fmtDate(r.timestamp)}</td>
+        <td>${r.photo ? `<img class="avatar-thumb" src="${r.photo}">` : `<div class="avatar-fallback"><i data-lucide="user" style="width:16px;height:16px;"></i></div>`}</td>
+        <td><div style="font-weight:600;">${Utils.escapeHtml(r.name)||'—'}</div><div style="font-size:.8rem; color:var(--ink-soft);">${Utils.escapeHtml(r.phone)}</div></td>
+        <td>${r.cnic === 'NA' ? '<span class="badge badge-amber">Manual</span>' : Utils.escapeHtml(r.cnic)}</td>
+        <td>
+          <div style="display:flex; gap:.5rem;">
+            <button class="btn btn-brand btn-sm restore-btn" data-id="${r.id}">Restore</button>
+            <button class="btn btn-danger btn-sm perm-del-btn" data-id="${r.id}">Delete permanently</button>
+          </div>
+        </td>
+      </tr>`;
+  },
+  render(container){
+    const rows = Store.getTrash().reverse();
+    container.innerHTML = `
+      <div class="card" style="max-width:100%;">
+        <div class="section-head"><h2 style="font-size:1.15rem;">Deleted entries</h2><span style="color:var(--ink-soft); font-size:.88rem;">${rows.length} item(s) in trash</span></div>
+        <div class="table-wrap">
+          <table style="min-width:800px;">
+            <thead><tr><th>Time</th><th>Photo</th><th>Info</th><th>CNIC / Mode</th><th>Actions</th></tr></thead>
+            <tbody>${rows.length ? rows.map(Trash.rowHtml).join('') : `<tr><td colspan="5"><div class="empty-state"><i data-lucide="trash-2"></i><div>Trash is empty</div></div></td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    Utils.icons();
+    document.querySelectorAll('.restore-btn').forEach(b => b.onclick = () => { if(Store.restoreFromTrash(b.dataset.id)) Trash.render(container); });
+    document.querySelectorAll('.perm-del-btn').forEach(b => b.onclick = () => {
+      if(confirm('Delete this permanently? This cannot be undone.')){ if(Store.permanentDelete(b.dataset.id)) Trash.render(container); }
+    });
+  }
+};
+
+/* ============================================================
+   PRICING
+============================================================ */
+const Pricing = {
+  plans: [
+    { key:'Basic', price:'$0', period:'3 Days', features:['Smart CNIC scanning','Live dashboard','Basic logs'], missing:['Data export'] },
+    { key:'Standard', price:'$5', period:'Month', features:['Everything in Basic','Excel data export','Data import'], missing:['Priority support'] },
+    { key:'Pro', price:'$7', period:'Month', features:['Everything in Standard','Advanced filtering','Priority support','Multi-device sync'], popular:true },
+    { key:'Lifetime', price:'$10', period:'Once', features:['Forever access','All future updates','Personal branding','Dedicated managed DB'] }
+  ],
+  render(container){
+    const currentPlan = Store.getCurrentUser()?.plan || 'Basic';
+    container.innerHTML = `
+      <div style="max-width:1100px; margin:0 auto;">
+        <div style="text-align:center; margin-bottom:2.6rem;">
+          <h1 style="font-size:1.9rem;">Choose your plan</h1>
+          <p class="subhead">Pick what fits your event's size and your team's workflow.</p>
+        </div>
+        <div class="grid grid-4">
+          ${Pricing.plans.map(p => {
+            const isCurrent = currentPlan === p.key;
+            return `
+            <div class="plan-card ${isCurrent ? 'current' : ''}">
+              ${isCurrent ? `<span class="plan-badge">Current plan</span>` : (p.popular ? `<span class="plan-badge" style="background:var(--amber); color:#3A2A0B;">Most popular</span>` : '')}
+              <h2 style="font-size:1.15rem;">${p.key}</h2>
+              <div class="price">${p.price} <small>/ ${p.period}</small></div>
+              <ul>
+                ${p.features.map(f => `<li><i data-lucide="check" style="color:var(--brand);"></i>${f}</li>`).join('')}
+                ${(p.missing||[]).map(f => `<li style="opacity:.45;"><i data-lucide="x" style="color:var(--danger);"></i>${f}</li>`).join('')}
+              </ul>
+              <button class="btn ${isCurrent ? 'btn-ghost' : 'btn-brand'} btn-block select-plan" data-plan="${p.key}" ${isCurrent ? 'disabled' : ''}>${isCurrent ? 'Active' : (p.key==='Basic' ? 'Choose plan' : 'Upgrade')}</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    Utils.icons();
+    document.querySelectorAll('.select-plan').forEach(b => b.onclick = () => {
+      const plan = b.dataset.plan;
+      if(plan === 'Basic'){ Store.updateUserPlan('Basic'); App.renderView('dashboard'); }
+      else App.renderView('payment', plan);
+    });
+  }
+};
+
+/* ============================================================
+   PAYMENT
+============================================================ */
+const Payment = {
+  PAYMENT_NUMBER: '+92 3039982013',      // ⚠ double-check this — looks one digit short for a Pakistani mobile number
+  WHATSAPP_NUMBER: '923026129000',       // used for wa.me links (no + or leading 0)
+
+  render(container, plan){
+    const prices = { Standard:5, Pro:7, Lifetime:10 };
+    const price = prices[plan];
+    container.innerHTML = `
+      <div style="display:flex; justify-content:center;">
+        <div class="card" style="width:100%; max-width:560px;">
+          <div style="text-align:center; margin-bottom:2rem;">
+            <h2 style="font-size:1.4rem;">Complete your purchase</h2>
+            <p class="subhead">Plan: <strong>${plan}</strong> — Amount: <strong>$${price}.00</strong></p>
+          </div>
+          <div class="grid grid-2" style="margin-bottom:1.8rem;">
+            <button class="pay-method active" data-m="jazzcash"><i data-lucide="smartphone"></i>JazzCash</button>
+            <button class="pay-method" data-m="easypaisa"><i data-lucide="wallet"></i>EasyPaisa</button>
+          </div>
+          <div style="text-align:center; padding:1.3rem; background:var(--paper); border-radius:var(--radius-s); border:1px dashed var(--line);">
+            <p id="wallet-text" style="font-size:.92rem; line-height:1.7;"></p>
+          </div>
+          <button id="whatsapp-confirm-btn" class="btn btn-brand btn-block" style="padding:1rem; margin-top:1.6rem; background:#25D366; color:#fff;">
+            <i data-lucide="message-circle"></i> I've sent it — confirm on WhatsApp
+          </button>
+          <button id="cancel-pay" class="btn btn-ghost btn-block" style="margin-top:.8rem; border:none;">Cancel and go back</button>
+          <div style="text-align:center; margin-top:1.3rem; font-size:.8rem; color:var(--ink-soft);">
+            Your plan activates on this device once you confirm — the organizer verifies the transfer on WhatsApp.
+          </div>
+        </div>
+      </div>
+    `;
+    Utils.icons();
+
+    const methods = document.querySelectorAll('.pay-method');
+    const walletText = document.getElementById('wallet-text');
+    const paintMethod = (m) => {
+      walletText.innerHTML = `Send <strong>$${price}.00</strong> via <strong>${m === 'jazzcash' ? 'JazzCash' : 'EasyPaisa'}</strong> to:<br><span style="font-size:1.2rem; font-weight:700; color:var(--brand);">${Payment.PAYMENT_NUMBER}</span><br>Account title: <strong>Live Intelligence</strong>`;
+    };
+    paintMethod('jazzcash');
+    methods.forEach(b => b.onclick = () => {
+      methods.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      paintMethod(b.dataset.m);
+    });
+
+    document.getElementById('whatsapp-confirm-btn').onclick = () => {
+      const activeMethod = document.querySelector('.pay-method.active')?.dataset.m === 'easypaisa' ? 'EasyPaisa' : 'JazzCash';
+      // Plan tab activate hoga jab organizer Access Control me license grant karega.
+      const u = Store.getCurrentUser();
+      if(u){ u.pendingPlan = plan; u.pendingMethod = activeMethod; u.subscriptionStatus = 'pending'; Store._write(Store.USER, u); }
+      const msg = encodeURIComponent(`Hi, I've sent $${price}.00 for the ${plan} plan via ${activeMethod} to ${Payment.PAYMENT_NUMBER}. Please confirm my subscription.`);
+      window.open(`https://wa.me/${Payment.WHATSAPP_NUMBER}?text=${msg}`, '_blank');
+      App.renderView('dashboard');
+    };
+    document.getElementById('cancel-pay').onclick = () => App.renderView('pricing');
+  }
+};
+
+/* ============================================================
+   PROFILE
+============================================================ */
+const Profile = {
+  render(container){
+    const u = Store.getCurrentUser();
+    container.innerHTML = `
+      <div style="max-width:760px; margin:0 auto;">
+        <div class="card">
+          <div style="display:flex; align-items:center; gap:1.3rem; margin-bottom:2rem; border-bottom:1px solid var(--line); padding-bottom:1.4rem;">
+            <div style="width:66px; height:66px; border-radius:50%; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:1.6rem; font-weight:600;">${(u?.name||'U').charAt(0).toUpperCase()}</div>
+            <div><h2 style="font-size:1.25rem;">Profile settings</h2><p class="subhead">Manage your account details.</p></div>
+          </div>
+          <form id="profile-form">
+            <div class="grid grid-2">
+              <div class="field"><label>Full name</label><input type="text" id="p-name" value="${Utils.escapeHtml(u?.name)}" required></div>
+              <div class="field"><label>Organization name</label><input type="text" id="p-business" value="${Utils.escapeHtml(u?.businessName)}"></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="field"><label>Phone number</label><input type="tel" id="p-phone" value="${Utils.escapeHtml(u?.phone)}" placeholder="+92 3XX XXXXXXX"></div>
+              <div class="field"><label>Email address</label><input type="email" id="p-email" value="${Utils.escapeHtml(u?.email)}"></div>
+            </div>
+            <div class="field"><label>Address</label><textarea id="p-address" rows="3">${Utils.escapeHtml(u?.address)}</textarea></div>
+
+            <div class="storage-note">
+              <i data-lucide="database"></i>
+              <div>You're on the <strong>${u?.plan||'Basic'}</strong> plan. (~${Store.storageUsedKB()} KB on this device.) ${Cloud.isConfigured() ? 'Entries Google Sheet me live sync ho rahi hain ✅' : 'Google Sheet sync off hai — Sync Settings me Worker URL lagayen.'} Export regularly from Entry Logs to keep a safe backup.</div>
+            </div>
+
+            <button type="submit" class="btn btn-brand" style="padding:.9rem 1.6rem;">Save changes</button>
+          </form>
+        </div>
+      </div>
+    `;
+    Utils.icons();
+    document.getElementById('profile-form').onsubmit = (e) => {
+      e.preventDefault();
+      const ok = Store.updateUserProfile({
+        name: document.getElementById('p-name').value,
+        businessName: document.getElementById('p-business').value,
+        phone: document.getElementById('p-phone').value,
+        email: document.getElementById('p-email').value,
+        address: document.getElementById('p-address').value
+      });
+      if(ok){ alert('Profile updated.'); App.renderView('profile'); }
+    };
+  }
+};
+
+/* ============================================================
+   CLOUD SYNC — Google Sheet live logging via Cloudflare Worker
+   Har entry "Entries" tab me, har license "Access" tab me — live.
+   Internet na ho to queue me rehta hai, wapas aate hi sync.
+============================================================ */
+const Cloud = {
+  get cfg(){ try{ return JSON.parse(localStorage.getItem('le_cloud') || '{}'); }catch(e){ return {}; } },
+  setCfg(patch){
+    const c = Object.assign(Cloud.cfg, patch);
+    localStorage.setItem('le_cloud', JSON.stringify(c));
+  },
+  get workerUrl(){ return (Cloud.cfg.workerUrl || '').replace(/\/+$/,''); },
+  get apiKey(){ return Cloud.cfg.apiKey || ''; },
+  isConfigured(){ return !!(Cloud.workerUrl && Cloud.apiKey); },
+
+  queue(){ try{ return JSON.parse(localStorage.getItem('le_queue') || '[]'); }catch(e){ return []; } },
+  saveQueue(q){ try{ localStorage.setItem('le_queue', JSON.stringify(q)); }catch(e){} },
+  pendingCount(){ return Cloud.queue().length; },
+
+  entryRow(r){
+    const total = (parseInt(r.adultMen)||0) + (parseInt(r.adultWomen)||0) + (parseInt(r.children)||0);
+    const u = Store.getCurrentUser() || {};
+    return [
+      r.timestamp || '', r.name || '', r.fatherName || '', r.cnic || '', r.phone || '',
+      r.whatsapp2 || '', r.whatsapp3 || '', r.dob || '', r.address || '',
+      r.country || '', r.city || '', r.adultMen || 0, r.adultWomen || 0, r.children || 0, total,
+      r.vehicleMode || '', r.vehicleNumber || '', r.occupation || '',
+      (r.cnic && r.cnic !== 'NA') ? 'CNIC Scan' : 'Manual', u.email || ''
+    ];
+  },
+  licenseRow(l){
+    return [ l.grantedAt || '', l.name || '', l.email || '', l.phone || '', l.plan || '', l.days || '',
+      l.startDate || '', l.endDate || '', l.amount || '', l.method || '', l.status || 'active', l.notes || '' ];
+  },
+
+  queueEntry(rec){
+    if(!Cloud.isConfigured()) return;
+    const q = Cloud.queue();
+    q.push({ type:'entry', row: Cloud.entryRow(rec) });
+    Cloud.saveQueue(q);
+    Cloud.paintSyncBadge();
+    Cloud.flush();
+  },
+  pushLicense(lic){
+    if(!Cloud.isConfigured()) return;
+    const q = Cloud.queue();
+    q.push({ type:'license', row: Cloud.licenseRow(lic) });
+    Cloud.saveQueue(q);
+    Cloud.paintSyncBadge();
+    Cloud.flush();
+  },
+
+  async flush(){
+    if(!Cloud.isConfigured()) return;
+    const q = Cloud.queue();
+    if(!q.length){ Cloud.paintSyncBadge(); return; }
+    const remaining = [];
+    for(const item of q){
+      try{
+        const res = await fetch(Cloud.workerUrl + (item.type === 'entry' ? '/entry' : '/license'), {
+          method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ key: Cloud.apiKey, row: item.row })
+        });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        if(!j.ok) throw new Error(j.error || 'backend error');
+      }catch(e){ remaining.push(item); break; }
+    }
+    Cloud.saveQueue(remaining);
+    Cloud.paintSyncBadge();
+  },
+
+  async testConnection(){
+    if(!Cloud.isConfigured()) throw new Error('Worker URL ya API key missing hai.');
+    const res = await fetch(Cloud.workerUrl + '/ping?key=' + encodeURIComponent(Cloud.apiKey));
+    if(!res.ok) throw new Error('Worker ne jawab nahi diya (HTTP ' + res.status + ')');
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error || 'unknown error');
+    return j;
+  },
+
+  paintSyncBadge(){
+    const el = document.getElementById('sync-badge');
+    if(!el) return;
+    if(!Cloud.isConfigured()){ el.textContent = '○ Sheet not connected'; el.style.color = 'var(--ink-soft)'; return; }
+    const n = Cloud.pendingCount();
+    if(n === 0){ el.textContent = '● Sheet synced'; el.style.color = 'var(--brand)'; }
+    else { el.textContent = '● ' + n + ' pending…'; el.style.color = 'var(--amber)'; }
+  }
+};
+
+/* ============================================================
+   LICENSES — access grants with duration (days), synced to Sheet
+============================================================ */
+const Licenses = {
+  KEY: 'le_licenses',
+  all(){ try{ return JSON.parse(localStorage.getItem(Licenses.KEY) || '[]'); }catch(e){ return []; } },
+  save(list){ localStorage.setItem(Licenses.KEY, JSON.stringify(list)); },
+
+  grant(d){
+    const days = Math.max(1, parseInt(d.days) || 30);
+    const start = new Date(); start.setHours(0,0,0,0);
+    const end = new Date(start.getTime() + days * 86400000);
+    const lic = {
+      id: 'LIC-' + Date.now(),
+      grantedAt: new Date().toISOString(),
+      name: (d.name || '').trim(), email: (d.email || '').trim().toLowerCase(), phone: (d.phone || '').trim(),
+      plan: d.plan || 'Standard', days: days,
+      startDate: start.toISOString().slice(0,10), endDate: end.toISOString().slice(0,10),
+      amount: (d.amount || '').trim(), method: d.method || '', status: 'active', notes: (d.notes || '').trim()
+    };
+    const list = Licenses.all();
+    const i = list.findIndex(l => l.email && l.email === lic.email);
+    if(i >= 0) list[i] = lic; else list.push(lic);
+    Licenses.save(list);
+    Cloud.pushLicense(lic);
+    return lic;
+  },
+
+  latestFor(email){
+    email = (email || '').toLowerCase();
+    const mine = Licenses.all().filter(l => l.email === email);
+    mine.sort((a,b) => (b.grantedAt || '').localeCompare(a.grantedAt || ''));
+    return mine[0] || null;
+  },
+
+  daysLeft(lic){
+    if(!lic || lic.status !== 'active') return 0;
+    const ms = new Date(lic.endDate + 'T23:59:59').getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86400000));
+  },
+
+  revoke(id){
+    const list = Licenses.all();
+    const i = list.findIndex(l => l.id === id);
+    if(i < 0) return false;
+    list[i].status = 'revoked';
+    Licenses.save(list);
+    return true;
+  }
+};
+
+/* Access check — main views se pehle lagta hai. */
+function accessStatus(){
+  const u = Store.getCurrentUser();
+  if(!u) return { ok:false, reason:'no-user' };
+  if(u.subscriptionStatus === 'pending')
+    return { ok:false, reason:'pending', plan: u.pendingPlan };
+  if(u.plan === 'Lifetime' && u.subscriptionStatus === 'active')
+    return { ok:true, daysLeft: Infinity, plan:'Lifetime', kind:'lifetime' };
+  if((u.plan === 'Standard' || u.plan === 'Pro') && u.subscriptionStatus === 'active')
+    return { ok:true, daysLeft: null, plan: u.plan, kind:'legacy' };
+  const lic = Licenses.latestFor(u.email);
+  if(lic && lic.status === 'active'){
+    const left = Licenses.daysLeft(lic);
+    if(left > 0) return { ok:true, daysLeft: left, plan: lic.plan, kind:'license', lic: lic };
+  }
+  const t = Store.trialDaysLeft();
+  if(t > 0) return { ok:true, daysLeft: t, plan:'Trial', kind:'trial' };
+  return { ok:false, reason:'expired' };
+}
+
+/* ============================================================
+   ACCESS VIEW — admin: access grant with duration (days)
+============================================================ */
+const AccessView = {
+  render(container){
+    if(sessionStorage.getItem('le_admin') !== '1'){ AccessView.lock(container); return; }
+    const list = Licenses.all().slice().reverse();
+    container.innerHTML = `
+      <div class="grid grid-2">
+        <div class="card">
+          <h2 style="font-size:1.15rem; margin-bottom:.4rem;">Grant access</h2>
+          <p class="subhead" style="margin-bottom:1.4rem;">Payment verify hone ke baad yahan access dein — record Google Sheet ke <strong>Access</strong> tab me live jayega.</p>
+          <form id="grant-form">
+            <div class="field"><label>Client name</label><input type="text" id="g-name" required></div>
+            <div class="grid grid-2">
+              <div class="field"><label>Email (login wala)</label><input type="email" id="g-email" required></div>
+              <div class="field"><label>Phone</label><input type="tel" id="g-phone"></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="field"><label>Plan</label>
+                <select id="g-plan"><option>Standard</option><option>Pro</option><option>Lifetime</option><option>Basic</option></select>
+              </div>
+              <div class="field"><label>Duration (days)</label><input type="number" id="g-days" min="1" value="30" required></div>
+            </div>
+            <div class="grid grid-2">
+              <div class="field"><label>Amount received</label><input type="text" id="g-amount" placeholder="$5 / Rs 1400"></div>
+              <div class="field"><label>Payment method</label>
+                <select id="g-method"><option>JazzCash</option><option>EasyPaisa</option><option>Bank Transfer</option><option>Cash</option><option>Other</option></select>
+              </div>
+            </div>
+            <div class="field"><label>Notes (optional)</label><input type="text" id="g-notes"></div>
+            <button type="submit" class="btn btn-brand btn-block">Grant access &amp; push to sheet</button>
+          </form>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2 style="font-size:1.15rem;">Issued licenses</h2>
+            <button id="lic-lock" class="btn btn-ghost btn-sm">Lock</button></div>
+          <div class="subhead" style="margin-bottom:1rem;">${Cloud.isConfigured() ? (Cloud.pendingCount() ? Cloud.pendingCount()+' record(s) pending sync…' : 'Sheet synced ✅') : 'Sheet connected nahi — Sync Settings me Worker URL lagayen.'}</div>
+          <div class="table-wrap"><table style="min-width:560px;">
+            <thead><tr><th>Client</th><th>Plan</th><th>Left</th><th>Ends</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              ${list.length ? list.map(l => {
+                const left = Licenses.daysLeft(l);
+                const statusBadge = l.status !== 'active'
+                  ? '<span class="badge" style="background:var(--danger-tint);color:var(--danger);">Revoked</span>'
+                  : (left > 0 ? '<span class="badge badge-brand">Active</span>' : '<span class="badge badge-amber">Expired</span>');
+                return `<tr class="row">
+                  <td><div style="font-weight:600;">${Utils.escapeHtml(l.name)}</div><div style="font-size:.78rem;color:var(--ink-soft);">${Utils.escapeHtml(l.email)}</div></td>
+                  <td>${Utils.escapeHtml(l.plan)}</td>
+                  <td>${l.status !== 'active' ? '—' : left + ' d'}</td>
+                  <td style="font-size:.82rem;">${Utils.escapeHtml(l.endDate)}</td>
+                  <td>${statusBadge}</td>
+                  <td>${l.status === 'active' ? `<button class="btn btn-danger btn-sm lic-revoke" data-id="${l.id}">Revoke</button>` : ''}</td>
+                </tr>`;
+              }).join('') : `<tr><td colspan="6"><div class="empty-state"><i data-lucide="key-round"></i><div>No licenses issued yet</div></div></td></tr>`}
+            </tbody>
+          </table></div>
+          <button id="lic-sync-now" class="btn btn-ghost btn-sm" style="margin-top:1rem;"><i data-lucide="refresh-cw"></i> Sync now</button>
+        </div>
+      </div>`;
+    Utils.icons();
+    document.getElementById('lic-lock').onclick = () => { sessionStorage.removeItem('le_admin'); App.renderView('dashboard'); };
+    document.getElementById('lic-sync-now').onclick = async (e) => {
+      const b = e.currentTarget; b.disabled = true; b.textContent = 'Syncing…';
+      await Cloud.flush(); b.disabled = false; AccessView.render(container);
+    };
+    document.getElementById('grant-form').onsubmit = (e) => {
+      e.preventDefault();
+      const lic = Licenses.grant({
+        name: document.getElementById('g-name').value,
+        email: document.getElementById('g-email').value,
+        phone: document.getElementById('g-phone').value,
+        plan: document.getElementById('g-plan').value,
+        days: document.getElementById('g-days').value,
+        amount: document.getElementById('g-amount').value,
+        method: document.getElementById('g-method').value,
+        notes: document.getElementById('g-notes').value
+      });
+      alert('Access granted: ' + lic.name + ' — ' + lic.days + ' days (till ' + lic.endDate + ')' + (Cloud.isConfigured() ? '' : ' — NOTE: sheet sync off hai.'));
+      AccessView.render(container);
+    };
+    document.querySelectorAll('.lic-revoke').forEach(b => b.onclick = () => {
+      if(confirm('Revoke this license? User ka access foran band ho jayega.')){
+        Licenses.revoke(b.dataset.id); AccessView.render(container);
+      }
+    });
+  },
+
+  lock(container){
+    container.innerHTML = `
+      <div style="display:flex; justify-content:center;">
+        <div class="card" style="width:100%; max-width:420px; text-align:center;">
+          <i data-lucide="lock" style="width:30px;height:30px;color:var(--amber);"></i>
+          <h2 style="font-size:1.2rem; margin:1rem 0 .4rem;">Admin area</h2>
+          <p class="subhead" style="margin-bottom:1.4rem;">Access grant karne ke liye admin password dein.</p>
+          <form id="admin-form">
+            <div class="field" style="text-align:left;"><label>Admin password</label><input type="password" id="admin-pw" required></div>
+            <button type="submit" class="btn btn-brand btn-block">Unlock</button>
+          </form>
+        </div>
+      </div>`;
+    Utils.icons();
+    document.getElementById('admin-form').onsubmit = (e) => {
+      e.preventDefault();
+      const pw = document.getElementById('admin-pw').value;
+      const saved = Cloud.cfg.adminPw || 'admin123';
+      if(pw === saved){ sessionStorage.setItem('le_admin','1'); AccessView.render(container); }
+      else alert('Ghalat password.');
+    };
+  }
+};
+
+/* ============================================================
+   SYNC SETTINGS — Worker URL, API key, admin password
+============================================================ */
+const SyncSettings = {
+  render(container){
+    const c = Cloud.cfg;
+    container.innerHTML = `
+      <div style="max-width:760px; margin:0 auto;">
+        <div class="card">
+          <h2 style="font-size:1.15rem; margin-bottom:.4rem;">Google Sheet live sync</h2>
+          <p class="subhead" style="margin-bottom:1.6rem;">Har entry <strong>Entries</strong> tab me, har license <strong>Access</strong> tab me — live jayegi. Setup steps README.md me hain.</p>
+          <form id="sync-form">
+            <div class="field"><label>Worker URL</label><input type="text" id="s-worker" placeholder="https://xxx.workers.dev" value="${Utils.escapeHtml(c.workerUrl || '')}"></div>
+            <div class="field"><label>API key</label><input type="password" id="s-key" placeholder="Worker me set kiya hua API_KEY" value="${Utils.escapeHtml(c.apiKey || '')}"></div>
+            <div class="field"><label>Admin password (Access Control ke liye)</label><input type="password" id="s-adminpw" value="${Utils.escapeHtml(c.adminPw || 'admin123')}"></div>
+            <div style="display:flex; gap:.7rem; flex-wrap:wrap;">
+              <button type="submit" class="btn btn-brand">Save settings</button>
+              <button type="button" id="s-test" class="btn btn-ghost">Test connection</button>
+              <button type="button" id="s-flush" class="btn btn-ghost">Sync now (${Cloud.pendingCount()} pending)</button>
+            </div>
+            <div id="s-msg" style="margin-top:1rem; font-weight:600; font-size:.88rem;"></div>
+          </form>
+        </div>
+        <div class="storage-note" style="margin-top:1.4rem;">
+          <i data-lucide="info"></i>
+          <div>Internet na ho to entries is device me mehfooz rehti hain — connection wapas aate hi khud sheet me chali jati hain.</div>
+        </div>
+      </div>`;
+    Utils.icons();
+    const msg = (t, ok) => { const el = document.getElementById('s-msg'); el.style.color = ok ? 'var(--brand)' : 'var(--danger)'; el.textContent = t; };
+    document.getElementById('sync-form').onsubmit = (e) => {
+      e.preventDefault();
+      Cloud.setCfg({
+        workerUrl: document.getElementById('s-worker').value.trim(),
+        apiKey: document.getElementById('s-key').value.trim(),
+        adminPw: document.getElementById('s-adminpw').value || 'admin123'
+      });
+      msg('Settings save ho gayin.', true);
+      Cloud.paintSyncBadge(); Cloud.flush();
+    };
+    document.getElementById('s-test').onclick = async () => {
+      msg('Testing…', true);
+      try{ const j = await Cloud.testConnection(); msg('Connected ✅ — ' + (j.time || 'worker OK'), true); }
+      catch(e){ msg('Failed: ' + e.message, false); }
+    };
+    document.getElementById('s-flush').onclick = async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      await Cloud.flush(); b.disabled = false;
+      const n = Cloud.pendingCount();
+      msg(n ? n + ' ab bhi pending hain.' : 'Sab sync ho gaya ✅', n === 0);
+      SyncSettings.render(container);
+    };
+  }
+};
+
+
+/* ============================================================
+   APP CONTROLLER
+============================================================ */
+const App = {
+  init(){
+    Store.init();
+    App.applyTheme();
+    if(Store.isLoggedIn() && Store.getCurrentUser()) App.renderView('dashboard');
+    else { Store.logout(); App.renderGate('landing'); }
+
+    document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => App.renderView(b.dataset.view)));
+    document.getElementById('logout-btn').onclick = () => { Store.logout(); App.renderGate('landing'); };
+    document.getElementById('theme-toggle').onclick = () => {
+      const isDark = document.body.classList.toggle('dark-mode');
+      document.body.classList.toggle('light-mode', !isDark);
+      localStorage.setItem('mehfil_theme', isDark ? 'dark' : 'light');
+      App.setThemeIcon(isDark);
+    };
+  },
+
+  applyTheme(){
+    const dark = (localStorage.getItem('mehfil_theme') || 'light') === 'dark';
+    document.body.classList.toggle('dark-mode', dark);
+    document.body.classList.toggle('light-mode', !dark);
+    App.setThemeIcon(dark);
+  },
+  setThemeIcon(isDark){
+    const icon = document.querySelector('#theme-toggle i');
+    if(icon){ icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon'); Utils.icons(); }
+  },
+
+  renderGate(view){
+    document.getElementById('app-shell').style.display = 'none';
+    const gate = document.getElementById('gate-root');
+    gate.style.display = 'block';
+    if(view === 'landing') Landing.render();
+    else Auth.render(view);
+  },
+
+  renderView(viewName, data = null){
+    document.getElementById('gate-root').style.display = 'none';
+    const shell = document.getElementById('app-shell');
+    shell.style.display = 'flex';
+    const view = document.getElementById('view');
+
+    // ---- License / access gate ----
+    if(typeof accessStatus === 'function'){
+      const acc = accessStatus();
+      if(!acc.ok && ['dashboard','entry','logs','trash'].indexOf(viewName) !== -1){
+        const isPending = acc.reason === 'pending';
+        view.innerHTML = `
+          <div style="display:flex; justify-content:center; padding:2rem 0;">
+            <div class="card" style="width:100%; max-width:520px; text-align:center;">
+              <i data-lucide="${isPending ? 'hourglass' : 'lock'}" style="width:32px;height:32px;color:var(--amber);"></i>
+              <h2 style="font-size:1.25rem; margin:1rem 0 .5rem;">${isPending ? 'Payment verification pending' : 'Access expired'}</h2>
+              <p class="subhead" style="margin-bottom:1.6rem;">${isPending
+                ? `Aap ne <strong>${Utils.escapeHtml(acc.plan || '')}</strong> plan ke liye payment bhej di hai. Organizer WhatsApp par verify karke access dega.`
+                : 'Aap ke access ki muddat khatam ho gayi hai. Renew karne ke liye rabta karein.'}</p>
+              <div style="display:flex; gap:.7rem; justify-content:center; flex-wrap:wrap;">
+                <button id="gate-wa" class="btn btn-brand" style="background:#25D366;color:#fff;"><i data-lucide="message-circle"></i> WhatsApp par rabta karein</button>
+                <button id="gate-plans" class="btn btn-ghost">View plans</button>
+              </div>
+            </div>
+          </div>`;
+        Utils.icons();
+        document.getElementById('gate-wa').onclick = () => window.open('https://wa.me/' + Payment.WHATSAPP_NUMBER + '?text=' + encodeURIComponent('Assalam-o-Alaikum, mujhe Live Intelligence ka access chahiye.'), '_blank');
+        document.getElementById('gate-plans').onclick = () => App.renderView('pricing');
+        return;
+      }
+    }
+
+    const user = Store.getCurrentUser();
+    document.getElementById('sb-business').textContent = user?.businessName || 'My Organization';
+    const blurb = document.getElementById('user-blurb');
+    if(user){
+      const days = Store.trialDaysLeft();
+      const planColor = user.plan === 'Pro' ? 'var(--rose)' : (user.plan === 'Lifetime' ? 'var(--amber)' : 'var(--brand)');
+      blurb.innerHTML = `<div class="u-name">${Utils.escapeHtml(user.name)}</div><div style="color:${planColor};">${user.plan}</div>`;
+    }
+
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
+
+    const titles = { dashboard:'Live dashboard', entry: data ? 'Edit entry' : 'Attendee entry', logs:'Entry logs', trash:'Trash', pricing:'Pricing plans', payment:'Payment', profile:'Profile settings', access:'Access control', settings:'Sync settings' };
+    document.getElementById('view-title').textContent = titles[viewName] || 'Live Intelligence';
+
+    view.innerHTML = '';
+    if(viewName === 'dashboard') Dashboard.render(view);
+    else if(viewName === 'entry') Entry.render(view, data);
+    else if(viewName === 'logs') Logs.render(view);
+    else if(viewName === 'trash') Trash.render(view);
+    else if(viewName === 'pricing') Pricing.render(view);
+    else if(viewName === 'payment') Payment.render(view, data);
+    else if(viewName === 'profile') Profile.render(view);
+    else if(viewName === 'access') AccessView.render(view);
+    else if(viewName === 'settings') SyncSettings.render(view);
+    Cloud.paintSyncBadge();
+    Cloud.flush();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', App.init);
+window.addEventListener('online', () => { try{ Cloud.flush(); }catch(e){} });
+</script>
+</body>
+</html>
